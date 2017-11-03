@@ -246,6 +246,20 @@ docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" --cap-add NET_ADMIN ${D
   abort "Error: Could not ping ${HTTPD_CONTAINER_NAME} from service3"
 }
 
+monitor_clear
+log "performing HTTP GET on ${HTTPD_CONTAINER_NAME}/public from service3 (expected: 200)"
+RETURN=$(docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" ${DEMO_CONTAINER} /bin/bash -c "curl -s --output /dev/stderr -w '%{http_code}' -XGET http://${HTTPD_CONTAINER_NAME}/public")
+if [[ "${RETURN//$'\n'}" != "200" ]]; then
+  abort "Error: Could not reach ${HTTPD_CONTAINER_NAME}/public on port 80"
+fi
+
+monitor_clear
+log "performing HTTP GET on ${HTTPD_CONTAINER_NAME}/private from service3 (expected: 200)"
+RETURN=$(docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" ${DEMO_CONTAINER} /bin/bash -c "curl -s --output /dev/stderr -w '%{http_code}' -XGET http://${HTTPD_CONTAINER_NAME}/private")
+if [[ "${RETURN//$'\n'}" != "200" ]]; then
+  abort "Error: Could not reach ${HTTPD_CONTAINER_NAME}/private on port 80"
+fi
+
 log "creating cidr_aware_policy.json with non-matching prefix"
 policy_delete_and_wait "--all"
 cat <<EOF | policy_import_and_wait -
@@ -277,6 +291,25 @@ set +e
 docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" --cap-add NET_ADMIN ${DEMO_CONTAINER} ping6 -c ${DROP_TIMEOUT} ${HTTPD_CONTAINER_NAME} && {
   abort "Error: Unexpected success pinging ${HTTPD_CONTAINER_NAME} from service3"
 }
+set -e
+
+cilium bpf ct flush global
+monitor_clear
+log "performing HTTP GET on ${HTTPD_CONTAINER_NAME}/public from service3 (expected: 403)"
+set +e
+RETURN=$(docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" ${DEMO_CONTAINER} /bin/bash -c "curl -s --output /dev/stderr -w '%{http_code}' -XGET http://${HTTPD_CONTAINER_NAME}/public")
+if [[ "${RETURN//$'\n'}" == "200" ]]; then
+  abort "Error: Could reach ${HTTPD_CONTAINER_NAME}/public on port 80"
+fi
+set -e
+
+monitor_clear
+log "performing HTTP GET on ${HTTPD_CONTAINER_NAME}/private from service3 (expected: 403)"
+set +e
+RETURN=$(docker run --rm -i --net ${TEST_NET} -l "${ID_SERVICE3}" ${DEMO_CONTAINER} /bin/bash -c "curl -s --connect-timeout 3 --output /dev/stderr -w '%{http_code}' -XGET http://${HTTPD_CONTAINER_NAME}/private")
+if [[ "${RETURN//$'\n'}" == "200" ]]; then
+  abort "Error: Could reach ${HTTPD_CONTAINER_NAME}/private on port 80"
+fi
 set -e
 
 policy_delete_and_wait "--all"
