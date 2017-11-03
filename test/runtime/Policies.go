@@ -466,7 +466,7 @@ var _ = Describe("RunPolicies", func() {
 			},
 			"ingress": [
 				{"fromEndpoints": [
-					{ "matchLabels": {"id.app1": ""}}
+					{ "matchLabels": {"id.app2": ""}}
 				]},
 				{"fromCIDR":
 					[ "%s/32", "%s" ]}
