@@ -81,7 +81,6 @@ static inline int __inline__ __ct_lookup(void *map, struct __sk_buff *skb,
 			ct_update_timeout(entry);
 		if (ct_state) {
 			ct_state->rev_nat_index = entry->rev_nat_index;
-			ct_state->loopback = entry->lb_loopback;
 			ct_state->proxy_port = entry->proxy_port;
 		}
 
@@ -434,7 +433,6 @@ static inline int __inline__ ct_create6(void *map, struct ipv6_ct_tuple *tuple,
 	int proxy_port = 0;
 
 	entry.rev_nat_index = ct_state->rev_nat_index;
-	entry.lb_loopback = ct_state->loopback;
 	ct_update_timeout(&entry);
 
 	if (dir == CT_INGRESS) {
@@ -518,7 +516,6 @@ static inline int __inline__ ct_create4(void *map, struct ipv4_ct_tuple *tuple,
 	int proxy_port = 0;
 
 	entry.rev_nat_index = ct_state->rev_nat_index;
-	entry.lb_loopback = ct_state->loopback;
 	ct_update_timeout(&entry);
 
 	if (dir == CT_INGRESS) {
@@ -592,7 +589,7 @@ static inline int __inline__ ct_create4(void *map, struct ipv4_ct_tuple *tuple,
 		 * set up a conntrack tuple for the reply to ensure we do rev NAT
 		 * before attempting to route the destination address which will
 		 * not point back to the right source. */
-		if (ct_state->loopback) {
+		if (ct_state->addr == IPV4_LOOPBACK) {
 			tuple->flags = TUPLE_F_IN;
 			if (dir == CT_INGRESS)
 				tuple->daddr = ct_state->svc_addr;

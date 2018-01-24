@@ -336,8 +336,7 @@ struct ct_entry {
 	__u16 rx_closing:1,
 	      tx_closing:1,
 	      nat46:1,
-	      lb_loopback:1,
-	      reserve:12;
+	      reserve:13;
 	__u16 rev_nat_index;
 	__be16 proxy_port;
 	__u32 src_sec_id;
@@ -389,8 +388,7 @@ struct lb_sequence {
 
 struct ct_state {
 	__u16 rev_nat_index;
-	__u16 loopback:1,
-	      reserved:15;
+	__u16 reserved;
 	__be16 orig_dport;
 	__be16 proxy_port;
 	__be32 addr;

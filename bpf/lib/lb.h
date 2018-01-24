@@ -449,8 +449,7 @@ static inline int __inline__ lb6_local(struct __sk_buff *skb, int l3_off, int l4
 static inline int __inline__ __lb4_rev_nat(struct __sk_buff *skb, int l3_off, int l4_off,
 					 struct csum_offset *csum_off,
 					 struct ipv4_ct_tuple *tuple, int flags,
-					 struct lb4_reverse_nat *nat,
-					 struct ct_state *ct_state)
+					 struct lb4_reverse_nat *nat)
 {
 	__be32 old_sip, new_sip, sum = 0;
 	int ret;
@@ -474,7 +473,7 @@ static inline int __inline__ __lb4_rev_nat(struct __sk_buff *skb, int l3_off, in
 		new_sip = nat->address;
 	}
 
-	if (ct_state->loopback) {
+	if (tuple->daddr == IPV4_LOOPBACK) {
 		/* The packet was looped back to the sending endpoint on the
 		 * forward service translation. This implies that the original
 		 * source address of the packet is the source address of the
@@ -535,8 +534,7 @@ static inline int __inline__ lb4_rev_nat(struct __sk_buff *skb, int l3_off, int 
 	if (nat == NULL)
 		return 0;
 
-	return __lb4_rev_nat(skb, l3_off, l4_off, csum_off, tuple, flags, nat,
-			     ct_state);
+	return __lb4_rev_nat(skb, l3_off, l4_off, csum_off, tuple, flags, nat);
 }
 
 /** Extract IPv4 LB key from packet
@@ -667,6 +665,7 @@ static inline int __inline__ lb4_local(struct __sk_buff *skb, int l3_off, int l4
 				       struct ct_state *state, __be32 saddr)
 {
 	__be32 new_saddr = 0, new_daddr;
+	bool loopback = false;
 	__u16 slave;
 
 	slave = lb4_select_slave(skb, key, svc->count, svc->weight);
@@ -686,13 +685,13 @@ static inline int __inline__ lb4_local(struct __sk_buff *skb, int l3_off, int l4
 	 */
 	if (saddr == svc->target) {
 		new_saddr = IPV4_LOOPBACK;
-		state->loopback = 1;
+		loopback = true;
 		state->addr = new_saddr;
 		state->svc_addr = saddr;
 	}
 #endif
 
-	if (!state->loopback)
+	if (!loopback)
 		tuple->daddr = svc->target;
 
 	return lb4_xlate(skb, &new_daddr, &new_saddr, &saddr,

@@ -924,7 +924,7 @@ static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u
 #endif
 
 	if (unlikely(ret == CT_REPLY && ct_state.rev_nat_index &&
-		     !ct_state.loopback)) {
+		     tuple.daddr != IPV4_LOOPBACK)) {
 		int ret2;
 
 		ret2 = lb4_rev_nat(skb, ETH_HLEN, l4_off, &csum_off,
