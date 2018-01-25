@@ -36,12 +36,14 @@ logs_clear
 
 function no_service_init {
   cilium service delete --all
+  cilium bpf ct flush global
   SERVER_IP=$SERVER1_IP;
   SERVER_IP4=$SERVER1_IP4;
 }
 
 function service_init {
   log "beginning service init"
+  cilium bpf ct flush global
   cilium service update --rev --frontend "$SVC_IP4:80" --id 2233 \
 			--backends "$SERVER1_IP4:80" \
 			--backends "$SERVER2_IP4:80"
