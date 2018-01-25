@@ -137,8 +137,8 @@ function abort {
     cilium status
     cilium endpoint list
     cilium policy get
-    read -n 1 -p "Press any key to continue..."
   fi
+    read -n 1 -p "Press any key to continue..."
 
   monitor_dump
   monitor_stop
