@@ -533,7 +533,7 @@ skip_service_lookup:
 
 		if (ct_state.rev_nat_index) {
 			ret = lb4_rev_nat(skb, l3_off, l4_off, &csum_off,
-					  &ct_state, &tuple, 0);
+					  ct_state.rev_nat_index, &tuple, 0);
 			if (IS_ERR(ret))
 				return ret;
 		}
@@ -928,7 +928,7 @@ static inline int __inline__ ipv4_policy(struct __sk_buff *skb, int ifindex, __u
 		int ret2;
 
 		ret2 = lb4_rev_nat(skb, ETH_HLEN, l4_off, &csum_off,
-				   &ct_state, &tuple,
+				   ct_state.rev_nat_index, &tuple,
 				   REV_NAT_F_TUPLE_SADDR);
 		if (IS_ERR(ret2))
 			return ret2;

@@ -518,19 +518,20 @@ static inline int __inline__ __lb4_rev_nat(struct __sk_buff *skb, int l3_off, in
  * @arg l3_off		offset to L3
  * @arg l4_off		offset to L4
  * @arg csum_off	offset to L4 checksum field
- * @arg csum_flags	checksum flags
  * @arg index		reverse NAT index
  * @arg tuple		tuple
+ * @arg flags		REV_NAT_F_*
  */
 static inline int __inline__ lb4_rev_nat(struct __sk_buff *skb, int l3_off, int l4_off,
 					 struct csum_offset *csum_off,
-					 struct ct_state *ct_state,
-					 struct ipv4_ct_tuple *tuple, int flags)
+					 __u16 index,
+					 struct ipv4_ct_tuple *tuple,
+					 int flags)
 {
 	struct lb4_reverse_nat *nat;
 
-	cilium_dbg_lb(skb, DBG_LB4_REVERSE_NAT_LOOKUP, ct_state->rev_nat_index, 0);
-	nat = map_lookup_elem(&cilium_lb4_reverse_nat, &ct_state->rev_nat_index);
+	cilium_dbg_lb(skb, DBG_LB4_REVERSE_NAT_LOOKUP, index, 0);
+	nat = map_lookup_elem(&cilium_lb4_reverse_nat, &index);
 	if (nat == NULL)
 		return 0;
 
