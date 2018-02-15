@@ -49,7 +49,7 @@ func (s *SSHMeta) String() string {
 
 func GetLoSSHMeta() *SSHMeta {
 	return &SSHMeta{
-		sshClient: GetSSHClient("127.0.0.1", 22, "john"),
+		sshClient: GetSSHClient("127.0.0.1", 2222, "vagrant"),
 		rawConfig: []byte(""),
 		nodeName:  "lo",
 	}
