@@ -9,7 +9,8 @@ include ../Makefile.defs
 
 TARGET=cilium-agent
 SOURCES := $(shell find ../api ../common ../daemon ../pkg ../monitor . \( -name '*.go'  ! -name '*_test.go' \))
-$(TARGET): $(SOURCES) check-bindata
+$(TARGET): $(SOURCES) ../.git
+	$(MAKE) check-bindata
 	$(GO) build -i $(GOBUILD) -o $(TARGET)
 
 GO_BINDATA := go-bindata -prefix ../ -mode 0640 -modtime 1450269211 \
