@@ -80,7 +80,7 @@ else
 BAZEL_OPTS ?=
 BAZEL_BUILD_OPTS =
 
-all: clean-bins envoy $(GO_TARGETS)
+all: envoy $(GO_TARGETS)
 endif
 
 debug: envoy-debug $(GO_TARGETS)
