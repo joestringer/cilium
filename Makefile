@@ -185,7 +185,7 @@ reload:
 	sudo systemctl stop cilium cilium-docker
 	sudo $(MAKE) install
 	sudo systemctl start cilium cilium-docker
-	sleep 6
+	sleep 10
 	cilium status
 
 release:
