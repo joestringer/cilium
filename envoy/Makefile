@@ -80,18 +80,21 @@ else
 BAZEL_OPTS ?=
 BAZEL_BUILD_OPTS =
 
-all: envoy $(GO_TARGETS)
+all: $(ENVOY_BIN) $(GO_TARGETS)
 endif
 
 debug: envoy-debug $(GO_TARGETS)
 
 release: envoy-release $(GO_TARGETS)
 
-envoy: force-non-root
+ENVOY_DEPS := $(shell git ls-files .)
+
+$(ENVOY_BIN) envoy: $(ENVOY_DEPS) ../.git
+	$(MAKE) force-non-root
 	$(BAZEL) $(BAZEL_OPTS) build $(BAZEL_BUILD_OPTS) //:envoy
 
 # Allow root build for release
-$(ENVOY_BIN) envoy-release: force
+envoy-release: force
 	$(BAZEL) $(BAZEL_OPTS) build $(BAZEL_BUILD_OPTS) -c opt //:envoy
 
 envoy-debug: force-non-root
