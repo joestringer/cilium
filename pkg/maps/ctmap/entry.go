@@ -22,6 +22,8 @@ import (
 )
 
 // CtEntry represents an entry in the connection tracking table.
+//
+// This must be kept in sync with <bpf/lib/conntrack.h>
 type CtEntry struct {
 	RxPackets uint64
 	RxBytes   uint64
@@ -37,6 +39,10 @@ type CtEntry struct {
 	SourceSecurityID uint32
 	LastTxReport     uint32
 	LastRxReport     uint32
+	PIDGroup         uint16
+	_                uint16
+	_                uint16
+	_                uint16
 }
 
 // GetValuePtr returns the unsafe.Pointer for s.

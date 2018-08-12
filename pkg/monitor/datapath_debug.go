@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Authors of Cilium
+// Copyright 2016-2018 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -160,8 +160,8 @@ func ctLookup4Info1(n *DebugMsg) string {
 }
 
 func ctLookup4Info2(n *DebugMsg) string {
-	return fmt.Sprintf("nexthdr=%d flags=%d",
-		n.Arg1>>8, n.Arg1&0xFF)
+	return fmt.Sprintf("nexthdr=%d flags=%d tcp_flags=%x",
+		n.Arg1>>8, n.Arg1&0xFF, n.Arg2&0xFFFF)
 }
 
 func ctCreate4Info(n *DebugMsg) string {
@@ -241,7 +241,7 @@ func (n *DebugMsg) subTypeString() string {
 	case DbgLxcFound:
 		return fmt.Sprintf("Local container found ifindex %s seclabel %d", ifname(int(n.Arg1)), byteorder.NetworkToHost(uint16(n.Arg2)))
 	case DbgPolicyDenied:
-		return fmt.Sprintf("Policy evaluation would deny packet from %d to %d", n.Arg1, n.Arg2)
+		return fmt.Sprintf("Policy evaluation would deny packet from %d to %d (%s)", n.Arg1, n.Arg2, DropReason(uint8(n.Arg3&0xFF)))
 	case DbgCtLookup:
 		return fmt.Sprintf("CT lookup: %s", ctInfo(n.Arg1, n.Arg2))
 	case DbgCtLookupRev:

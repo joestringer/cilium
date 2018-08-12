@@ -1,4 +1,4 @@
-// Copyright 2016-2017 Authors of Cilium
+// Copyright 2016-2018 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,6 +77,7 @@ var errors = map[uint8]string{
 	162: "Policy denied (CIDR)",
 	163: "Unknown connection tracking state",
 	164: "Local host is unreachable",
+	165: "Policy denied (Process)",
 }
 
 // DropReason prints the drop reason in a human readable string

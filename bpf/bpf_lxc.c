@@ -440,6 +440,7 @@ static inline int handle_ipv4_from_lxc(struct __sk_buff *skb, __u32 *dstID)
 	__be32 orig_dip;
 	__u32 tunnel_endpoint = 0;
 	__u32 monitor = 0;
+	union tcp_flags tcp_flags = { .syn = 1 };
 
 	if (!revalidate_data(skb, &data, &data_end, &ip4))
 		return DROP_INVALID;
@@ -488,7 +489,7 @@ skip_service_lookup:
 	 * POLICY_SKIP if the packet is a reply packet to an existing
 	 * incoming connection. */
 	ret = ct_lookup4(get_ct_map4(&tuple), &tuple, skb, l4_off, CT_EGRESS,
-			 &ct_state, &monitor);
+			 &ct_state, &monitor, &tcp_flags);
 	if (ret < 0)
 		return ret;
 
@@ -513,7 +514,11 @@ skip_service_lookup:
 	/* If the packet is in the establishing direction and it's destined
 	 * within the cluster, it must match policy or be dropped. If it's
 	 * bound for the host/outside, perform the CIDR policy check. */
-	verdict = policy_can_egress4(skb, &tuple, *dstID, ipv4_ct_tuple_get_daddr(&tuple));
+	verdict = policy_can_egress4(skb, &tuple, 0, *dstID,
+				     ipv4_ct_tuple_get_daddr(&tuple));
+	if (ret == DROP_POLICY_PID && tcp_flags.syn) {
+		verdict = 0;
+	}
 	if (ret != CT_REPLY && ret != CT_RELATED && verdict < 0) {
 		/* If the connection was previously known and packet is now
 		 * denied, remove the connection tracking entry */
@@ -889,6 +894,7 @@ ipv4_policy(struct __sk_buff *skb, int ifindex, __u32 src_label, int *forwarding
 	__be32 orig_dip, orig_sip;
 	bool is_fragment = false;
 	__u32 monitor = 0;
+	union tcp_flags tcp_flags; // Ignored; simplifies verifier.
 
 	if (!revalidate_data(skb, &data, &data_end, &ip4))
 		return DROP_INVALID;
@@ -910,7 +916,7 @@ ipv4_policy(struct __sk_buff *skb, int ifindex, __u32 src_label, int *forwarding
 	is_fragment = ipv4_is_fragment(ip4);
 
 	ret = ct_lookup4(get_ct_map4(&tuple), &tuple, skb, l4_off, CT_INGRESS, &ct_state,
-			 &monitor);
+			 &monitor, &tcp_flags);
 	if (ret < 0)
 		return ret;
 

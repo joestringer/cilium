@@ -43,6 +43,14 @@ static inline bool identity_is_reserved(__u32 identity)
 	return identity < UNMANAGED_ID;
 }
 
+static inline bool
+policy_matches_pid_group(struct policy_entry *policy, __u16 pid_group,
+			 bool *pid_mismatch)
+{
+	*pid_mismatch = policy->pid_group && policy->pid_group != pid_group;
+	return !*pid_mismatch;
+}
+
 #ifdef SOCKMAP
 static inline int __inline__
 policy_sk_egress(__u32 identity, __u32 ip,  __u16 dport)
@@ -98,11 +106,13 @@ get_proxy_port:
 #else
 
 static inline int __inline__
-__policy_can_access(void *map, struct __sk_buff *skb, __u32 identity,
-		    __u16 dport, __u8 proto, size_t cidr_addr_size,
-		    void *cidr_addr, int dir, bool is_fragment)
+__policy_can_access(void *map, struct __sk_buff *skb, __u16 pid_group,
+		    __u32 identity, __u16 dport, __u8 proto,
+		    size_t cidr_addr_size, void *cidr_addr, int dir,
+		    bool is_fragment)
 {
 	struct policy_entry *policy;
+	bool pid_mismatch = false;
 
 	struct policy_key key = {
 		.sec_label = identity,
@@ -114,7 +124,8 @@ __policy_can_access(void *map, struct __sk_buff *skb, __u32 identity,
 
 	if (!is_fragment) {
 		policy = map_lookup_elem(map, &key);
-		if (likely(policy)) {
+		if (likely(policy) &&
+		    policy_matches_pid_group(policy, pid_group, &pid_mismatch)) {
 			cilium_dbg3(skb, DBG_L4_CREATE, identity, SECLABEL,
 				    dport << 16 | proto);
 
@@ -129,7 +140,8 @@ __policy_can_access(void *map, struct __sk_buff *skb, __u32 identity,
 	key.dport = 0;
 	key.protocol = 0;
 	policy = map_lookup_elem(map, &key);
-	if (likely(policy)) {
+	if (likely(policy) &&
+	    policy_matches_pid_group(policy, pid_group, &pid_mismatch)) {
 		/* FIXME: Use per cpu counters */
 		__sync_fetch_and_add(&policy->packets, 1);
 		__sync_fetch_and_add(&policy->bytes, skb->len);
@@ -154,6 +166,8 @@ __policy_can_access(void *map, struct __sk_buff *skb, __u32 identity,
 
 	if (is_fragment)
 		return DROP_FRAG_NOSUPPORT;
+	if (pid_mismatch)
+		return DROP_POLICY_PID;
 	return DROP_POLICY;
 get_proxy_port:
 	if (likely(policy)) {
@@ -184,13 +198,13 @@ policy_can_access_ingress(struct __sk_buff *skb, __u32 src_identity,
 {
 	int ret;
 
-	ret = __policy_can_access(&POLICY_MAP, skb, src_identity, dport,
+	ret = __policy_can_access(&POLICY_MAP, skb, 0, src_identity, dport,
 				      proto, cidr_addr_size, cidr_addr,
 				      CT_INGRESS, is_fragment);
 	if (ret >= TC_ACT_OK)
 		return ret;
 
-	cilium_dbg(skb, DBG_POLICY_DENIED, src_identity, SECLABEL);
+	cilium_dbg(skb, DBG_POLICY_DENIED, src_identity, SECLABEL, -ret);
 
 #ifdef IGNORE_DROP
 	ret = TC_ACT_OK;
@@ -202,14 +216,15 @@ policy_can_access_ingress(struct __sk_buff *skb, __u32 src_identity,
 #if defined LXC_ID
 
 static inline int __inline__
-policy_can_egress(struct __sk_buff *skb, __u32 identity, __u16 dport, __u8 proto)
+policy_can_egress(struct __sk_buff *skb, __u16 pid_group, __u32 identity,
+		  __u16 dport, __u8 proto)
 {
-	int ret = __policy_can_access(&POLICY_MAP, skb, identity, dport, proto,
-				      0, NULL, CT_EGRESS, false);
+	int ret = __policy_can_access(&POLICY_MAP, skb, pid_group, identity,
+				      dport, proto, 0, NULL, CT_EGRESS, false);
 	if (ret >= 0)
 		return ret;
 
-	cilium_dbg(skb, DBG_POLICY_DENIED, SECLABEL, identity);
+	cilium_dbg(skb, DBG_POLICY_DENIED, SECLABEL, identity, -ret);
 
 #ifdef IGNORE_DROP
 	ret = TC_ACT_OK;
@@ -222,14 +237,17 @@ static inline int policy_can_egress6(struct __sk_buff *skb,
 				     struct ipv6_ct_tuple *tuple,
 				     __u32 identity, union v6addr *daddr)
 {
-	return policy_can_egress(skb, identity, tuple->dport, tuple->nexthdr);
+	// TODO: IPv6 PIDGroup support
+	return policy_can_egress(skb, 0, identity, tuple->dport, tuple->nexthdr);
 }
 
 static inline int policy_can_egress4(struct __sk_buff *skb,
 				     struct ipv4_ct_tuple *tuple,
-				     __u32 identity, __be32 daddr)
+				     __u16 pid_group, __u32 identity,
+				     __be32 daddr)
 {
-	return policy_can_egress(skb, identity, tuple->dport, tuple->nexthdr);
+	return policy_can_egress(skb, pid_group, identity, tuple->dport,
+				 tuple->nexthdr);
 }
 
 #else /* LXC_ID */
@@ -243,7 +261,7 @@ policy_can_egress6(struct __sk_buff *skb, struct ipv6_ct_tuple *tuple,
 
 static inline int
 policy_can_egress4(struct __sk_buff *skb, struct ipv4_ct_tuple *tuple,
-		   __u32 identity, __be32 daddr)
+		   __u16 pid_group, __u32 identity, __be32 daddr)
 {
 	return TC_ACT_OK;
 }

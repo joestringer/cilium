@@ -187,7 +187,8 @@ struct policy_key {
 
 struct policy_entry {
 	__be16		proxy_port;
-	__u16		pad[3];
+	__u16		pid_group;
+	__u16		pad[2];
 	__u64		packets;
 	__u64		bytes;
 };
@@ -269,6 +270,7 @@ enum {
 #define DROP_POLICY_CIDR		-162
 #define DROP_UNKNOWN_CT			-163
 #define DROP_HOST_UNREACHABLE		-164
+#define DROP_POLICY_PID		-165
 
 /* Cilium metrics reason for forwarding packet.
  * If reason > 0 then this is a drop reason and value corresponds to -(DROP_*)
@@ -405,6 +407,9 @@ struct ct_entry {
 	 * notification was sent for the transmit/receive direction. */
 	__u32 last_tx_report;
 	__u32 last_rx_report;
+
+	__u16 pid_group;
+	__u16 pad[3];
 };
 
 struct lb6_key {

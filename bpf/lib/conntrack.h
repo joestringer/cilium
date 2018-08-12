@@ -58,6 +58,20 @@
 #define CT_REPORT_INTERVAL CT_DEFAULT_REPORT_INTERVAL
 #endif
 
+union tcp_flags {
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+	__u16	res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
+#elif defined(__BIG_ENDIAN_BITFIELD)
+	__u16	doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
+#else
+#error	"Adjust your <asm/byteorder.h> defines"
+#endif
+	struct {
+		__u8 upper_bits;
+		__u8 lower_bits;
+	};
+};
+
 #ifdef CONNTRACK
 
 #define TUPLE_F_OUT		0	/* Outgoing flow */
@@ -88,20 +102,6 @@ static inline bool conn_is_dns(__u16 dport)
 	}
 	return false;
 }
-
-union tcp_flags {
-#if defined(__LITTLE_ENDIAN_BITFIELD)
-	__u16	res1:4, doff:4, fin:1, syn:1, rst:1, psh:1, ack:1, urg:1, ece:1, cwr:1;
-#elif defined(__BIG_ENDIAN_BITFIELD)
-	__u16	doff:4, res1:4, cwr:1, ece:1, urg:1, ack:1, psh:1, rst:1, syn:1, fin:1;
-#else
-#error	"Adjust your <asm/byteorder.h> defines"
-#endif
-	struct {
-		__u8 upper_bits;
-		__u8 lower_bits;
-	};
-};
 
 /**
  * Update the CT timeout and TCP flags for the specified entry.
@@ -406,7 +406,7 @@ static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,
 	 */
 	cilium_dbg3(skb, DBG_CT_LOOKUP6_1, (__u32) tuple->saddr.p4, (__u32) tuple->daddr.p4,
 		      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));
-	cilium_dbg3(skb, DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);
+	cilium_dbg3(skb, DBG_CT_LOOKUP6_2, (tuple->nexthdr << 8) | tuple->flags, tcp_flags.syn, 0);
 	ret = __ct_lookup(map, skb, tuple, action, dir, ct_state, is_tcp,
 			  tcp_flags, monitor);
 	if (ret != CT_NEW) {
@@ -466,7 +466,8 @@ static inline void ct4_cilium_dbg_tuple(struct __sk_buff *skb, __u8 type,
 /* Offset must point to IPv4 header */
 static inline int __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,
 					struct __sk_buff *skb, int off, int dir,
-					struct ct_state *ct_state, __u32 *monitor)
+					struct ct_state *ct_state, __u32 *monitor,
+					union tcp_flags *tcp_flags_out)
 {
 	int ret = CT_NEW, action = ACTION_UNSPEC;
 	bool is_tcp = tuple->nexthdr == IPPROTO_TCP;
@@ -562,7 +563,7 @@ static inline int __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,
 #ifndef QUIET_CT
 	cilium_dbg3(skb, DBG_CT_LOOKUP4_1, tuple->saddr, tuple->daddr,
 		      (bpf_ntohs(tuple->sport) << 16) | bpf_ntohs(tuple->dport));
-	cilium_dbg3(skb, DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, 0, 0);
+	cilium_dbg3(skb, DBG_CT_LOOKUP4_2, (tuple->nexthdr << 8) | tuple->flags, tcp_flags.syn, 0);
 #endif
 	ret = __ct_lookup(map, skb, tuple, action, dir, ct_state, is_tcp,
 			  tcp_flags, monitor);
@@ -586,6 +587,7 @@ out:
 	cilium_dbg(skb, DBG_CT_VERDICT, ret < 0 ? -ret : ret, ct_state->rev_nat_index);
 	if (conn_is_dns(tuple->dport))
 		*monitor = MTU;
+	*tcp_flags_out = tcp_flags;
 	return ret;
 }
 
@@ -781,7 +783,8 @@ static inline int __inline__ ct_lookup6(void *map, struct ipv6_ct_tuple *tuple,
 
 static inline int __inline__ ct_lookup4(void *map, struct ipv4_ct_tuple *tuple,
 					struct __sk_buff *skb, int off, int dir,
-					struct ct_state *ct_state, __u32 *monitor)
+					struct ct_state *ct_state, __u32 *monitor,
+					union tcp_flags *tcp_flags_out)
 {
 	return 0;
 }

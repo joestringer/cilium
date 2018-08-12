@@ -55,6 +55,7 @@ import (
 	"github.com/cilium/cilium/pkg/pidfile"
 	"github.com/cilium/cilium/pkg/policy"
 	"github.com/cilium/cilium/pkg/pprof"
+	"github.com/cilium/cilium/pkg/probes"
 	"github.com/cilium/cilium/pkg/service"
 	"github.com/cilium/cilium/pkg/sockops"
 	"github.com/cilium/cilium/pkg/version"
@@ -816,6 +817,9 @@ func runDaemon() {
 		log.WithError(err).Fatal("Error while creating daemon")
 		return
 	}
+
+	probes.Init()
+	defer probes.Close()
 
 	log.Info("Starting connection tracking garbage collector")
 	endpointmanager.EnableConntrackGC(!option.Config.IPv4Disabled, true,

@@ -57,7 +57,7 @@ type PolicyMap struct {
 }
 
 func (pe *PolicyEntry) String() string {
-	return fmt.Sprintf("%d %d %d", pe.ProxyPort, pe.Packets, pe.Bytes)
+	return fmt.Sprintf("%d %d %d %d", pe.ProxyPort, pe.PIDGroup, pe.Packets, pe.Bytes)
 }
 
 // PolicyKey represents a key in the BPF policy map for an endpoint. It must
@@ -73,7 +73,7 @@ type PolicyKey struct {
 // match the layout of policy_entry in bpf/lib/common.h.
 type PolicyEntry struct {
 	ProxyPort uint16 // In network byte-order
-	Pad0      uint16
+	PIDGroup  uint16
 	Pad1      uint16
 	Pad2      uint16
 	Packets   uint64
@@ -171,7 +171,11 @@ func (pm *PolicyMap) AllowKey(k PolicyKey, proxyPort uint16) error {
 // protocol `proto`. It is assumed that `dport` and `proxyPort` are in host byte-order.
 func (pm *PolicyMap) Allow(id uint32, dport uint16, proto u8proto.U8proto, trafficDirection trafficdirection.TrafficDirection, proxyPort uint16) error {
 	key := PolicyKey{Identity: id, DestPort: byteorder.HostToNetwork(dport).(uint16), Nexthdr: uint8(proto), TrafficDirection: trafficDirection.Uint8()}
-	entry := PolicyEntry{ProxyPort: byteorder.HostToNetwork(proxyPort).(uint16)}
+	entry := PolicyEntry{
+		ProxyPort: byteorder.HostToNetwork(proxyPort).(uint16),
+		// TODO: Create a PIDGroup and push this down
+		PIDGroup: uint16(1),
+	}
 	return bpf.UpdateElement(pm.Fd, unsafe.Pointer(&key), unsafe.Pointer(&entry), 0)
 }
 

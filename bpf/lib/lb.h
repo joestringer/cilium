@@ -713,9 +713,10 @@ static inline int __inline__ lb4_local(void *map, struct __sk_buff *skb,
 	__u32 monitor; // Deliberately ignored; regular CT will determine monitoring.
 	__be32 new_saddr = 0, new_daddr;
 	__u8 flags = tuple->flags;
+	union tcp_flags dummy; // Ignored to simplify verifier checks.
 	int ret;
 
-	ret = ct_lookup4(map, tuple, skb, l4_off, CT_SERVICE, state, &monitor);
+	ret = ct_lookup4(map, tuple, skb, l4_off, CT_SERVICE, state, &monitor, &dummy);
 	switch(ret) {
 	case CT_NEW:
 		state->slave = lb4_select_slave(skb, key, svc->count, svc->weight);
