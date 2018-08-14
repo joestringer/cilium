@@ -116,7 +116,7 @@ if os.environ.get('READTHEDOCS') == 'True':
 else:
     html_theme = "sphinx_rtd_theme"
 html_theme_path = ["_themes/sphinx_rtd_theme", ]
-#html_style = "/default.css"
+html_style = "sphinx_rtd_theme/static/css/theme.css"
 html_context = {
         'release': release
 }
