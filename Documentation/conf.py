@@ -111,12 +111,9 @@ todo_include_todos = False
 
 # If on RTD, set the theme to default so that it will copy our version of the
 # theme.
-if os.environ.get('READTHEDOCS') == 'True':
-    html_theme = "default"
-else:
-    html_theme = "sphinx_rtd_theme"
+html_theme = "sphinx_rtd_theme"
 html_theme_path = ["_themes/sphinx_rtd_theme", ]
-html_style = "sphinx_rtd_theme/static/css/theme.css"
+html_style = "static/css/theme.css"
 html_context = {
         'release': release
 }
@@ -130,7 +127,7 @@ html_context = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['images', '_static', '_themes/sphinx_rtd_theme']
+html_static_path = ['images', '_static', '_themes/sphinx_rtd_theme/sphinx_rtd_theme']
 
 # -- Options for HTMLHelp output ------------------------------------------
 
