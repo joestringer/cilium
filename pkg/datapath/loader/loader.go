@@ -45,8 +45,8 @@ type endpoint interface {
 
 // joinEP shells out to bpf/join_ep.sh to compile/load the BPF datapath for the
 // specified endpoint, and handles timeouts if the loading takes too long.
-func joinEP(ctx context.Context, ep endpoint, libdir, rundir, epdir string) error {
-	args := []string{libdir, rundir, epdir, ep.InterfaceName(), ep.StringID()}
+func joinEP(ctx context.Context, ep endpoint, libdir, rundir, epdir, compile string) error {
+	args := []string{libdir, rundir, epdir, ep.InterfaceName(), "false", ep.StringID(), compile}
 	prog := filepath.Join(libdir, "join_ep.sh")
 
 	scopedLog := ep.Logger()
@@ -77,7 +77,7 @@ func joinEP(ctx context.Context, ep endpoint, libdir, rundir, epdir string) erro
 // and loads it onto the interface associated with the endpoint.
 //
 // Expects the caller to have created the directory at the path ep.StateDir().
-func CompileAndLoad(ctx context.Context, ep endpoint) error {
+func CompileAndLoad(ctx context.Context, ep endpoint, compile string) error {
 	if ep == nil {
 		log.Fatalf("LoadBPF() doesn't support non-endpoint load")
 	}
@@ -85,5 +85,5 @@ func CompileAndLoad(ctx context.Context, ep endpoint) error {
 	libdir := option.Config.BpfDir
 	rundir := option.Config.StateDir
 	epdir := ep.StateDir()
-	return joinEP(ctx, ep, libdir, rundir, epdir)
+	return joinEP(ctx, ep, libdir, rundir, epdir, compile)
 }

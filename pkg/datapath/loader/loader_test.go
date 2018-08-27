@@ -54,7 +54,11 @@ func (ep *testEP) StateDir() string {
 	return "test_loader"
 }
 
-func prepareEnv(ep *testEP) (*directoryInfo, func() error, error) {
+func (ep *testEP) StringID() string {
+	return "test_loader"
+}
+
+func prepareEnv(ep *testEP) (string, func() error, error) {
 	link := netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: ep.InterfaceName(),
@@ -62,7 +66,7 @@ func prepareEnv(ep *testEP) (*directoryInfo, func() error, error) {
 	}
 	if err := netlink.LinkAdd(&link); err != nil {
 		if !os.IsExist(err) {
-			return nil, nil, fmt.Errorf("Failed to add link: %s", err)
+			return "", nil, fmt.Errorf("Failed to add link: %s", err)
 		}
 	}
 	cleanupFn := func() error {
@@ -75,16 +79,11 @@ func prepareEnv(ep *testEP) (*directoryInfo, func() error, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		cleanupFn()
-		return nil, nil, fmt.Errorf("Failed to get working directory: %s", err)
+		return "", nil, fmt.Errorf("Failed to get working directory: %s", err)
 	}
 	bpfdir := filepath.Join(wd, "..", "..", "..", "bpf")
-	dirs := directoryInfo{
-		Library: bpfdir,
-		Runtime: bpfdir,
-		Output:  bpfdir,
-	}
 
-	return &dirs, cleanupFn, nil
+	return bpfdir, cleanupFn, nil
 }
 
 // TestCompileAndLoad checks that the basic CompileAndLoad functionality works
@@ -102,7 +101,7 @@ func (s *LoaderTestSuite) TestCompileAndLoad(c *C) {
 	c.Assert(err, IsNil)
 	defer cleanup()
 
-	c.Assert(compileAndLoad(ctx, ep, dirs), IsNil)
+	c.Assert(joinEP(ctx, ep, dirs, dirs, dirs, "true"), IsNil)
 }
 
 // BenchmarkCompileAndLoad benchmarks the entire compilation + loading process.
@@ -119,7 +118,7 @@ func BenchmarkCompileAndLoad(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := compileAndLoad(ctx, ep, dirs); err != nil {
+		if err := joinEP(ctx, ep, dirs, dirs, dirs, "true"); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -138,13 +137,12 @@ func BenchmarkReplaceDatapath(b *testing.B) {
 	}
 	defer cleanup()
 
-	if err := compileDatapath(ctx, ep, dirs, false); err != nil {
+	if err := joinEP(ctx, ep, dirs, dirs, dirs, "true"); err != nil {
 		b.Fatal(err)
 	}
-	objPath := fmt.Sprintf("%s/%s", dirs.Output, endpointObj)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if err := replaceDatapath(ctx, ep.InterfaceName(), objPath, symbolFromEndpoint); err != nil {
+		if err := joinEP(ctx, ep, dirs, dirs, dirs, "false"); err != nil {
 			b.Fatal(err)
 		}
 	}

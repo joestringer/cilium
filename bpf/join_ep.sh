@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016-2017 Authors of Cilium
+# Copyright 2016-2018 Authors of Cilium
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ EPDIR=$3
 IFNAME=$4
 DEBUG=$5
 EPID=$6
+COMPILE=$7
 
 function bpf_preprocess()
 {
@@ -47,7 +48,7 @@ function bpf_compile()
 	llc -march=bpf -mcpu=probe $LLC_FLAGS -filetype=$TYPE -o $EPDIR/$OUT
 }
 
-echo "Join EP id=$EPDIR ifname=$IFNAME"
+echo "Join EP id=$EPDIR ifname=$IFNAME compile=$COMPILE"
 
 # Only generate ASM output if debug is enabled.
 if [[ "${DEBUG}" == "true" ]]; then
@@ -58,7 +59,9 @@ if [[ "${DEBUG}" == "true" ]]; then
   bpf_preprocess bpf_lxc.c
 fi
 
-bpf_compile bpf_lxc.c bpf_lxc.o obj
+if [[ "${COMPILE}" == "true" ]]; then
+  bpf_compile bpf_lxc.c bpf_lxc.o obj
+fi
 tc qdisc replace dev $IFNAME clsact || true
 cilium-map-migrate -s $EPDIR/bpf_lxc.o
 set +e

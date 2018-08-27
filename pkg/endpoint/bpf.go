@@ -571,6 +571,7 @@ func (e *Endpoint) regenerateBPF(owner Owner, epdir string, regenContext *Regene
 	e.Unlock()
 
 	e.Logger().WithField("bpfHeaderfilesChanged", bpfHeaderfilesChanged).Debug("Preparing to compile BPF")
+	compile := strconv.FormatBool(bpfHeaderfilesChanged)
 
 	stats.prepareBuild.End()
 	if bpfHeaderfilesChanged || regenContext.ReloadDatapath {
@@ -579,7 +580,7 @@ func (e *Endpoint) regenerateBPF(owner Owner, epdir string, regenContext *Regene
 		// Compile and install BPF programs for this endpoint
 		stats.bpfCompilation.Start()
 		ctx, cancel := context.WithTimeout(context.Background(), ExecTimeout)
-		err = loader.CompileAndLoad(ctx, epInfoCache)
+		err = loader.CompileAndLoad(ctx, epInfoCache, compile)
 		stats.bpfCompilation.End()
 		cancel()
 		close(closeChan)
