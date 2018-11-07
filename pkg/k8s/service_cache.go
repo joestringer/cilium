@@ -88,7 +88,7 @@ type ServiceEvent struct {
 // matching endpoints. The Events member will receive events as services and
 // ingresses
 type ServiceCache struct {
-	mutex     lock.RWMutex
+	mutex     *lock.RWMutex
 	services  map[ServiceID]*Service
 	endpoints map[ServiceID]*Endpoints
 	ingresses map[ServiceID]*Service
