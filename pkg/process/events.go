@@ -68,3 +68,7 @@ func (c *ConnectContext) String() string {
 func (p *ProcessContext) AddConnection(ctx ConnectContext) {
 	p.connections[ctx.StringID()] = ctx
 }
+
+func (p *ProcessContext) AddExecveEvent(comm string) {
+	p.KernelCommand = comm
+}

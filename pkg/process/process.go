@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/cilium/pkg/endpoint"
+	"github.com/cilium/cilium/pkg/endpointmanager"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 
@@ -58,7 +60,11 @@ type ProcessContext struct {
 	// If nil, the proccessContext is live.
 	Expiry time.Time
 
+	KernelCommand string
+
 	connections map[string]ConnectContext
+
+	endpoint *endpoint.Endpoint
 }
 
 func newProcessContext(hostPID PID) (*ProcessContext, error) {
@@ -80,6 +86,26 @@ func newProcessContext(hostPID PID) (*ProcessContext, error) {
 		context.Name, _ = p.Name()
 	}
 
+	if context.DockerContainerID != "" {
+		// TODO: This races with the Update of the ContainerID which is
+		//       done from the plugin via a call to
+		//       endpoint.SetContainerID(). As a result, this is
+		//       usually failing to associate with an endpoint.
+		context.endpoint = endpointmanager.LookupContainerID(context.DockerContainerID)
+		if context.endpoint == nil {
+			log.WithFields(logrus.Fields{
+				logfields.PID:         hostPID,
+				logfields.ContainerID: context.DockerContainerID,
+			}).Infof("Failed to associate PID to endpoint")
+		} else {
+			log.WithFields(logrus.Fields{
+				logfields.PID:         hostPID,
+				logfields.ContainerID: context.DockerContainerID,
+				logfields.EndpointID:  context.endpoint.StringID(),
+			}).Debugf("Associating PID to endpoint")
+		}
+	}
+
 	return context, nil
 }
 
@@ -89,12 +115,16 @@ func extractContainerID(s string) string {
 
 // String returns a human-readable representation of the ProcessContext.
 func (p *ProcessContext) String() string {
+	endpoint := "host"
+	if p.endpoint != nil {
+		endpoint = p.endpoint.StringID()
+	}
 	binary := p.Binary
 	if binary == "" {
 		binary = fmt.Sprintf("[%s]", p.Name)
 	}
 	return fmt.Sprintf("%-5s %5d %5d %20s %s %s %s",
-		"host", p.HostPID, p.ContainerPID, p.Expiry.Format(time.RFC3339), p.DockerContainerID, binary, p.CmdLine)
+		endpoint, p.HostPID, p.ContainerPID, p.Expiry.Format(time.RFC3339), p.DockerContainerID, binary, p.CmdLine)
 }
 
 func (p *ProcessContext) readPIDProcFile() error {

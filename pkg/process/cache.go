@@ -19,6 +19,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/cilium/cilium/pkg/endpoint"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 
@@ -53,11 +54,29 @@ func newCache() *cache {
 	}
 }
 
-// lookupOrCreateLocked attempts to find a process and creates it if it doesn't
-// already exist. Returns the process, whether it is newly created, or an error.
-func (c *cache) lookupOrCreateLocked(pid PID) (*ProcessContext, bool, error) {
-	context, exists := c.byPID[pid]
-	if !exists {
+func (c *cache) UpdateReferences(endpoint *endpoint.Endpoint) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	context, ok := c.byContainerID[endpoint.GetContainerID()]
+	if ok {
+		log.WithFields(logrus.Fields{
+			logfields.ContainerID: endpoint.GetContainerID(),
+		}).Debug("Updating process cache entry for endpoint")
+		context.endpoint = endpoint
+	} else {
+		log.WithFields(logrus.Fields{
+			logfields.ContainerID: endpoint.GetContainerID(),
+		}).Warning("Couldn't find process cache entry for endpoint")
+	}
+}
+
+func (c *cache) LookupOrCreate(pid PID) (*ProcessContext, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	context, ok := c.byPID[pid]
+	if !ok {
 		var err error
 
 		context, err = newProcessContext(pid)
