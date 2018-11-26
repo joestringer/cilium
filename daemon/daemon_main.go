@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -55,6 +56,8 @@ import (
 	"github.com/cilium/cilium/pkg/pidfile"
 	"github.com/cilium/cilium/pkg/policy"
 	"github.com/cilium/cilium/pkg/pprof"
+	"github.com/cilium/cilium/pkg/process"
+	"github.com/cilium/cilium/pkg/process/notify"
 	"github.com/cilium/cilium/pkg/proxy"
 	"github.com/cilium/cilium/pkg/service"
 	"github.com/cilium/cilium/pkg/sockops"
@@ -846,6 +849,35 @@ func runDaemon() {
 	go d.nodeMonitor.Run(path.Join(defaults.RuntimePath, defaults.EventsPipe), bpf.GetMapRoot())
 
 	d.initK8sSubsystem()
+
+	pw := notify.NewProcessWatcher()
+	controller.NewManager().UpdateController("proc-poller",
+		controller.ControllerParams{
+			DoFunc: func() error {
+				return pw.Watch()
+			},
+		},
+	)
+	processFile, err := ioutil.TempFile("", "cilium_proc_")
+	if err != nil {
+		log.WithError(err).Fatal("Failed to generate temp file")
+	}
+	controller.NewManager().UpdateController("proc-dumper",
+		controller.ControllerParams{
+			DoFunc: func() error {
+				if _, err := processFile.Seek(0, 0); err != nil {
+					return err
+				}
+				writer := bufio.NewWriter(processFile)
+				process.Cache.Dump(writer)
+				if err := writer.Flush(); err != nil {
+					return err
+				}
+				return processFile.Sync()
+			},
+			RunInterval: 10 * time.Second,
+		},
+	)
 
 	if option.Config.RestoreState {
 		// When we regenerate restored endpoints, it is guaranteed tha we have
