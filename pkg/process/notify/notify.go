@@ -32,8 +32,8 @@ const (
 
 var (
 	log             = logging.DefaultLogger.WithField(logfields.LogSubsys, "process-notify")
-	defaultInterval = 100 * time.Millisecond
-	gcInterval      = 1 * time.Second
+	defaultInterval = 1 * time.Second
+	gcInterval      = 15 * time.Second
 )
 
 type ProcessListener interface {
