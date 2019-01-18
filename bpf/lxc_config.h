@@ -22,7 +22,7 @@
 
 #define LXC_IP 0xbe, 0xef, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1, 0x1, 0x65, 0x82, 0xbc
 #define LXC_IPV4 0x10203040
-#define LXC_ID 0x1010
+#define LXC_ID 0x2A
 #ifndef SECLABEL
 #define SECLABEL 0xfffff
 #define SECLABEL_NB 0xfffff
@@ -40,13 +40,13 @@
 #define CT_MAP_ANY4 cilium_ct_any4_111
 #define CT_MAP_SIZE_TCP 4096
 #define CT_MAP_SIZE_ANY 4096
-#define CALLS_MAP test_cilium_calls_111
+#define CALLS_MAP test_cilium_calls_42
 #define LB_L3
 #define LB_L4
 #define LOCAL_DELIVERY_METRICS
 #define CONNTRACK
 #define CONNTRACK_ACCOUNTING
-#define CONFIG_MAP test_cilium_ep_config_111
+#define CONFIG_MAP test_cilium_ep_config_42
 
 /* It appears that we can support around the below number of prefixes in an
  * unrolled loop for LPM CIDR handling in older kernels along with the rest of

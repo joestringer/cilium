@@ -58,6 +58,7 @@
 #define LB4_REVERSE_NAT_MAP test_cilium_lb4_reverse_nat
 #define LB4_SERVICES_MAP test_cilium_lb4_services
 #define LB4_RR_SEQ_MAP test_cilium_lb4_rr_seq
+#define CALLS_MAP test_cilium_calls_42
 #define SECLABEL 2
 #define SECLABEL_NB 0xfffff
 #define ENABLE_ARP_RESPONDER
