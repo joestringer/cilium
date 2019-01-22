@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/cilium/cilium/common"
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/byteorder"
 	"github.com/cilium/cilium/pkg/datapath"
@@ -60,7 +59,7 @@ func (l *linuxDatapath) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeConf
 		hostIP.String(), routerIP.String(),
 		node.GetInternalIPv4().String())
 
-	fmt.Fprintf(fw, "%s\n", common.FmtDefineComma("ROUTER_IP", routerIP))
+	fmt.Fprint(fw, defineIPv6("ROUTER_IP", routerIP))
 
 	if option.Config.EnableIPv4 {
 		ipv4GW := node.GetInternalIPv4()
@@ -77,10 +76,10 @@ func (l *linuxDatapath) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeConf
 	fmt.Fprintf(fw, "#define IPV4_MASK %#x\n", byteorder.HostSliceToNetwork(ipv4Range.Mask, reflect.Uint32).(uint32))
 
 	if nat46Range := option.Config.NAT46Prefix; nat46Range != nil {
-		fmt.Fprintf(fw, "%s\n", common.FmtDefineComma("NAT46_PREFIX", nat46Range.IP))
+		fmt.Fprint(fw, defineIPv6("NAT46_PREFIX", nat46Range.IP))
 	}
 
-	fmt.Fprintf(fw, "%s\n", common.FmtDefineComma("HOST_IP", hostIP))
+	fmt.Fprint(fw, defineIPv6("HOST_IP", hostIP))
 	fmt.Fprintf(fw, "#define HOST_ID %d\n", identity.GetReservedID(labels.IDNameHost))
 	fmt.Fprintf(fw, "#define WORLD_ID %d\n", identity.GetReservedID(labels.IDNameWorld))
 	fmt.Fprintf(fw, "#define HEALTH_ID %d\n", identity.GetReservedID(labels.IDNameHealth))
@@ -174,7 +173,7 @@ func mapPath(mapname string, e datapath.EndpointConfiguration) string {
 func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConfiguration) error {
 	fw := bufio.NewWriter(w)
 
-	fmt.Fprint(fw, common.FmtDefineComma("LXC_IP", e.IPv6Address()))
+	fmt.Fprint(fw, defineIPv6("LXC_IP", e.IPv6Address()))
 	fmt.Fprintf(fw, "#define LXC_IPV4 %#x\n", byteorder.HostSliceToNetwork(e.IPv4Address(), reflect.Uint32))
 
 	switch {
@@ -186,7 +185,7 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 		}
 	}
 
-	fmt.Fprint(fw, common.FmtDefineAddress("NODE_MAC", e.GetNodeMAC()))
+	fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
 	fmt.Fprintf(fw, "#define LXC_ID %#x\n", e.GetID())
 
 	secID := e.GetIdentity()
