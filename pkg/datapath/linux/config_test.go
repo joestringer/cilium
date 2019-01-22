@@ -23,6 +23,7 @@ import (
 
 	"github.com/cilium/cilium/common/addressing"
 	"github.com/cilium/cilium/pkg/datapath"
+	"github.com/cilium/cilium/pkg/datapath/loader"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/mac"
 	"github.com/cilium/cilium/pkg/node"
@@ -38,7 +39,7 @@ var (
 
 	dummyNodeCfg = datapath.LocalNodeConfiguration{}
 	dummyDevCfg  = dummyEP{}
-	dummyEPCfg   = dummyEP{}
+	dummyEPCfg   = dummyEP{id: 42}
 )
 
 func (s *DatapathSuite) SetUpTest(c *C) {
@@ -51,12 +52,14 @@ func (b *badWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("bad write :(")
 }
 
-type dummyEP struct{}
+type dummyEP struct {
+	id uint64
+}
 
 func (d *dummyEP) HasIpvlanDataPath() bool               { return false }
 func (d *dummyEP) ConntrackLocalLocked() bool            { return false }
 func (d *dummyEP) GetCIDRPrefixLengths() ([]int, []int)  { return nil, nil }
-func (d *dummyEP) GetID() uint64                         { return 42 }
+func (d *dummyEP) GetID() uint64                         { return d.id }
 func (d *dummyEP) StringID() string                      { return "42" }
 func (d *dummyEP) GetIdentity() identity.NumericIdentity { return 42 }
 func (d *dummyEP) GetNodeMAC() mac.MAC                   { return nil }
@@ -119,4 +122,30 @@ func (s *DatapathSuite) TestWriteEndpointConfig(c *C) {
 	writeConfig(c, "endpoint", func(w io.Writer, dp datapath.Datapath) error {
 		return dp.WriteEndpointConfig(w, &dummyEPCfg)
 	})
+}
+
+// TestHashDatapath is done in this package just for easy access to dummy
+// configuration objects.
+func (s *DatapathSuite) TestHashDatapath(c *C) {
+	dp := NewDatapath(DatapathConfiguration{})
+	h := loader.NewHash()
+	baseHash := string(h.Sum(nil)[:])
+
+	// Ensure we get different hashes when config is added
+	h = loader.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &dummyEPCfg)
+	dummyHash := string(h.Sum(nil)[:])
+	c.Assert(dummyHash, Not(Equals), baseHash)
+
+	// Ensure we get the same base hash when config is not added
+	h.Reset()
+	result := string(h.Sum(nil)[:])
+	c.Assert(result, Equals, baseHash)
+
+	// Ensure that with different endpoint config we get different hashes
+	newEPCfg := dummyEPCfg
+	newEPCfg.id = newEPCfg.id + 1
+	h = loader.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &newEPCfg)
+	result = string(h.Sum(nil)[:])
+	c.Assert(result, Not(Equals), baseHash)
+	c.Assert(result, Not(Equals), dummyHash)
 }
