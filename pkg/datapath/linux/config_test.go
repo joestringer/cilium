@@ -23,7 +23,7 @@ import (
 
 	"github.com/cilium/cilium/common/addressing"
 	"github.com/cilium/cilium/pkg/datapath"
-	"github.com/cilium/cilium/pkg/datapath/loader"
+	"github.com/cilium/cilium/pkg/datapath/cache"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/mac"
 	"github.com/cilium/cilium/pkg/node"
@@ -38,8 +38,8 @@ var (
 	_ = Suite(&DatapathSuite{})
 
 	dummyNodeCfg = datapath.LocalNodeConfiguration{}
-	dummyDevCfg  = dummyEP{}
-	dummyEPCfg   = dummyEP{id: 42}
+	dummyDevCfg  = newDummyEP()
+	dummyEPCfg   = newDummyEP()
 )
 
 func (s *DatapathSuite) SetUpTest(c *C) {
@@ -53,7 +53,17 @@ func (b *badWriter) Write(p []byte) (int, error) {
 }
 
 type dummyEP struct {
-	id uint64
+	id   uint64
+	opts *option.IntOptions
+}
+
+func newDummyEP() dummyEP {
+	opts := option.NewIntOptions(&option.OptionLibrary{})
+	opts.SetBool("TEST_OPTION", true)
+	return dummyEP{
+		id:   42,
+		opts: opts,
+	}
 }
 
 func (d *dummyEP) HasIpvlanDataPath() bool               { return false }
@@ -63,6 +73,7 @@ func (d *dummyEP) GetID() uint64                         { return d.id }
 func (d *dummyEP) StringID() string                      { return "42" }
 func (d *dummyEP) GetIdentity() identity.NumericIdentity { return 42 }
 func (d *dummyEP) GetNodeMAC() mac.MAC                   { return nil }
+func (d *dummyEP) GetOptions() *option.IntOptions        { return d.opts }
 
 func (d *dummyEP) IPv4Address() addressing.CiliumIPv4 {
 	addr, _ := addressing.NewCiliumIPv4("192.0.2.3")
@@ -71,11 +82,6 @@ func (d *dummyEP) IPv4Address() addressing.CiliumIPv4 {
 func (d *dummyEP) IPv6Address() addressing.CiliumIPv6 {
 	addr, _ := addressing.NewCiliumIPv6("::ffff:192.0.2.3")
 	return addr
-}
-func (d *dummyEP) GetOptions() *option.IntOptions {
-	result := option.NewIntOptions(&option.OptionLibrary{})
-	result.SetBool("TEST_OPTION", true)
-	return result
 }
 
 type testCase struct {
@@ -128,24 +134,38 @@ func (s *DatapathSuite) TestWriteEndpointConfig(c *C) {
 // configuration objects.
 func (s *DatapathSuite) TestHashDatapath(c *C) {
 	dp := NewDatapath(DatapathConfiguration{})
-	h := loader.NewHash()
-	baseHash := string(h.Sum(nil)[:])
+	h := cache.NewHash(dp)
+	baseHash := h.String()
 
 	// Ensure we get different hashes when config is added
-	h = loader.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &dummyEPCfg)
-	dummyHash := string(h.Sum(nil)[:])
+	h = cache.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &dummyEPCfg)
+	dummyHash := h.String()
 	c.Assert(dummyHash, Not(Equals), baseHash)
 
-	// Ensure we get the same base hash when config is not added
+	// Ensure we get the same base hash when config is removed via Reset()
 	h.Reset()
-	result := string(h.Sum(nil)[:])
-	c.Assert(result, Equals, baseHash)
+	c.Assert(h.String(), Equals, baseHash)
+	c.Assert(h.String(), Not(Equals), dummyHash)
 
-	// Ensure that with different endpoint config we get different hashes
+	// Ensure that with a copy of the endpoint config we get the same hash
 	newEPCfg := dummyEPCfg
-	newEPCfg.id = newEPCfg.id + 1
-	h = loader.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &newEPCfg)
-	result = string(h.Sum(nil)[:])
-	c.Assert(result, Not(Equals), baseHash)
-	c.Assert(result, Not(Equals), dummyHash)
+	h = cache.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &newEPCfg)
+	c.Assert(h.String(), Not(Equals), baseHash)
+	c.Assert(h.String(), Equals, dummyHash)
+
+	// Even with different endpoint IDs, we get the same hash
+	//
+	// This is the key to avoiding recompilation per endpoint; static
+	// data substitution is performed via pkg/elf instead.
+	newEPCfg.id++
+	h = cache.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &newEPCfg)
+	c.Assert(h.String(), Not(Equals), baseHash)
+	c.Assert(h.String(), Equals, dummyHash)
+
+	// But when we configure the endpoint differently, it's different
+	newEPCfg = newDummyEP()
+	newEPCfg.opts.SetBool("foo", true)
+	h = cache.HashDatapath(dp, &dummyNodeCfg, &dummyDevCfg, &newEPCfg)
+	c.Assert(h.String(), Not(Equals), baseHash)
+	c.Assert(h.String(), Not(Equals), dummyHash)
 }
