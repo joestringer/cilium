@@ -20,7 +20,6 @@ import (
 	"io"
 	"path"
 	"reflect"
-	"strconv"
 
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/byteorder"
@@ -166,7 +165,7 @@ func (l *linuxDatapath) WriteNetdevConfig(w io.Writer, cfg datapath.DeviceConfig
 }
 
 func mapPath(mapname string, e datapath.EndpointConfiguration) string {
-	return path.Base(bpf.MapPath(mapname + strconv.Itoa(int(e.GetID()))))
+	return path.Base(bpf.MapPath(fmt.Sprintf("%s%05d", mapname, e.GetID())))
 }
 
 // WriteEndpointConfig writes the BPF configuration for the endpoint to a writer.
