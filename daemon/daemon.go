@@ -15,7 +15,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net"
@@ -340,13 +339,7 @@ func (d *Daemon) writePreFilterHeader(dir string) error {
 
 	}
 	defer f.Close()
-	fw := bufio.NewWriter(f)
-	fmt.Fprint(fw, "/*\n")
-	fmt.Fprintf(fw, " * XDP device: %s\n", option.Config.DevicePreFilter)
-	fmt.Fprintf(fw, " * XDP mode: %s\n", option.Config.ModePreFilter)
-	fmt.Fprint(fw, " */\n\n")
-	d.preFilter.WriteConfig(fw)
-	return fw.Flush()
+	return d.preFilter.WriteConfig(f)
 }
 
 // GetOptions returns the datapath configuration options of the daemon.

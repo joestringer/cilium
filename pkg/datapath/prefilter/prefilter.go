@@ -1,4 +1,4 @@
-// Copyright 2017-2018 Authors of Cilium
+// Copyright 2017-2019 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package prefilter
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net"
@@ -25,6 +26,7 @@ import (
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/maps/cidrmap"
+	"github.com/cilium/cilium/pkg/option"
 )
 
 type preFilterMapType int
@@ -62,9 +64,16 @@ type PreFilter struct {
 }
 
 // WriteConfig dumps the configuration for the corresponding header file
-func (p *PreFilter) WriteConfig(fw io.Writer) {
+func (p *PreFilter) WriteConfig(w io.Writer) error {
+	fw := bufio.NewWriter(w)
+
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
+
+	fmt.Fprint(fw, "/*\n")
+	fmt.Fprintf(fw, " * XDP device: %s\n", option.Config.DevicePreFilter)
+	fmt.Fprintf(fw, " * XDP mode: %s\n", option.Config.ModePreFilter)
+	fmt.Fprint(fw, " */\n\n")
 
 	fmt.Fprintf(fw, "#define CIDR4_HMAP_ELEMS %d\n", maxHKeys)
 	fmt.Fprintf(fw, "#define CIDR4_LMAP_ELEMS %d\n", maxLKeys)
@@ -86,6 +95,7 @@ func (p *PreFilter) WriteConfig(fw io.Writer) {
 			fmt.Fprintf(fw, "#define CIDR6_LPM_PREFILTER\n")
 		}
 	}
+	return fw.Flush()
 }
 
 func (p *PreFilter) dumpOneMap(which preFilterMapType, to []string) []string {
