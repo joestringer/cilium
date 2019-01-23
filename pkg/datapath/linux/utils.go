@@ -16,6 +16,7 @@ package linux
 
 import (
 	"fmt"
+	"net"
 )
 
 // goArray2C transforms a byte slice into its hexadecimal string representation.
@@ -37,7 +38,10 @@ func goArray2C(array []byte) string {
 
 // defineIPv6 writes the C definition for the given IPv6 address.
 func defineIPv6(name string, addr []byte) string {
-	return fmt.Sprintf("#define %s %s\n", name, goArray2C(addr))
+	if len(addr) != net.IPv6len {
+		return fmt.Sprintf("/* BUG: bad ip define %s %s */\n", name, goArray2C(addr))
+	}
+	return fmt.Sprintf("DEFINE_IPV6(%s, %s);\n", name, goArray2C(addr))
 }
 
 // defineMAC writes the C definition for the given MAC name and addr.
