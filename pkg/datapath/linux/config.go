@@ -170,11 +170,28 @@ func mapPath(mapname string, e datapath.EndpointConfiguration) string {
 }
 
 // WriteEndpointConfig writes the BPF configuration for the endpoint to a writer.
-func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConfiguration) error {
+func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConfiguration, staticData bool) error {
 	fw := bufio.NewWriter(w)
 
-	fmt.Fprint(fw, defineIPv6("LXC_IP", e.IPv6Address()))
-	fmt.Fprintf(fw, "#define LXC_IPV4 %#x\n", byteorder.HostSliceToNetwork(e.IPv4Address(), reflect.Uint32))
+	if staticData {
+		fmt.Fprint(fw, defineIPv6("LXC_IP", e.IPv6Address()))
+		fmt.Fprintf(fw, "#define LXC_IPV4 %#x\n", byteorder.HostSliceToNetwork(e.IPv4Address(), reflect.Uint32))
+
+		fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
+		fmt.Fprintf(fw, "#define LXC_ID %#x\n", e.GetID())
+
+		secID := e.GetIdentity()
+		fmt.Fprintf(fw, "#define SECLABEL %s\n", secID.StringID())
+		fmt.Fprintf(fw, "#define SECLABEL_NB %#x\n", byteorder.HostToNetwork(secID.Uint32()))
+
+		fmt.Fprint(fw, "#define LB_L3\n")
+		fmt.Fprint(fw, "#define LB_L4\n")
+		fmt.Fprint(fw, "#define LOCAL_DELIVERY_METRICS\n")
+
+		fmt.Fprintf(fw, "#define POLICY_MAP %s\n", mapPath(policymap.MapName, e))
+		fmt.Fprintf(fw, "#define CALLS_MAP %s\n", mapPath("cilium_calls_", e))
+		fmt.Fprintf(fw, "#define CONFIG_MAP %s\n", mapPath(bpfconfig.MapNamePrefix, e))
+	}
 
 	switch {
 	case !e.HasIpvlanDataPath():
@@ -185,29 +202,11 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 		}
 	}
 
-	fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
-	fmt.Fprintf(fw, "#define LXC_ID %#x\n", e.GetID())
-
-	secID := e.GetIdentity()
-	fmt.Fprintf(fw, "#define SECLABEL %s\n", secID.StringID())
-	fmt.Fprintf(fw, "#define SECLABEL_NB %#x\n", byteorder.HostToNetwork(secID.Uint32()))
-
-	fmt.Fprintf(fw, "#define POLICY_MAP %s\n", mapPath(policymap.MapName, e))
-	fmt.Fprintf(fw, "#define CALLS_MAP %s\n", mapPath("cilium_calls_", e))
-	fmt.Fprintf(fw, "#define CONFIG_MAP %s\n", mapPath(bpfconfig.MapNamePrefix, e))
-
 	if e.ConntrackLocalLocked() {
 		ctmap.WriteBPFMacros(fw, e)
 	} else {
 		ctmap.WriteBPFMacros(fw, nil)
 	}
-
-	// Always enable L4 and L3 load balancer for now
-	fmt.Fprint(fw, "#define LB_L3\n")
-	fmt.Fprint(fw, "#define LB_L4\n")
-
-	// Local delivery metrics should always be set for endpoint programs.
-	fmt.Fprint(fw, "#define LOCAL_DELIVERY_METRICS\n")
 
 	l.writeNetdevConfig(fw, e)
 

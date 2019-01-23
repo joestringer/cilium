@@ -154,7 +154,7 @@ func (e *Endpoint) writeHeaderfile(prefix string, owner Owner) error {
 	if err = fw.Flush(); err != nil {
 		return err
 	}
-	return owner.Datapath().WriteEndpointConfig(f, e)
+	return owner.Datapath().WriteEndpointConfig(f, e, true)
 }
 
 // hashEndpointHeaderFiles returns the MD5 hash of any header files that are
