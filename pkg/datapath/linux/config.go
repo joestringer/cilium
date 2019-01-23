@@ -77,7 +77,7 @@ func (l *linuxDatapath) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeConf
 	fmt.Fprintf(fw, "#define IPV4_MASK %#x\n", byteorder.HostSliceToNetwork(ipv4Range.Mask, reflect.Uint32).(uint32))
 
 	if nat46Range := option.Config.NAT46Prefix; nat46Range != nil {
-		fmt.Fprintf(fw, "%s\n", common.FmtDefineAddress("NAT46_PREFIX", nat46Range.IP))
+		fmt.Fprintf(fw, "%s\n", common.FmtDefineComma("NAT46_PREFIX", nat46Range.IP))
 	}
 
 	fmt.Fprintf(fw, "%s\n", common.FmtDefineComma("HOST_IP", hostIP))
