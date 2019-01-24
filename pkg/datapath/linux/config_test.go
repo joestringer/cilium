@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/cilium/pkg/mac"
 	"github.com/cilium/cilium/pkg/node"
 	"github.com/cilium/cilium/pkg/option"
+	"github.com/cilium/cilium/pkg/testutils"
 
 	. "gopkg.in/check.v1"
 )
@@ -38,8 +39,8 @@ var (
 	_ = Suite(&DatapathSuite{})
 
 	dummyNodeCfg = datapath.LocalNodeConfiguration{}
-	dummyDevCfg  = newDummyEP()
-	dummyEPCfg   = newDummyEP()
+	dummyDevCfg  = testutils.NewTestEndpoint()
+	dummyEPCfg   = testutils.NewTestEndpoint()
 )
 
 func (s *DatapathSuite) SetUpTest(c *C) {
@@ -50,38 +51,6 @@ type badWriter struct{}
 
 func (b *badWriter) Write(p []byte) (int, error) {
 	return 0, errors.New("bad write :(")
-}
-
-type dummyEP struct {
-	id   uint64
-	opts *option.IntOptions
-}
-
-func newDummyEP() dummyEP {
-	opts := option.NewIntOptions(&option.OptionLibrary{})
-	opts.SetBool("TEST_OPTION", true)
-	return dummyEP{
-		id:   42,
-		opts: opts,
-	}
-}
-
-func (d *dummyEP) HasIpvlanDataPath() bool               { return false }
-func (d *dummyEP) ConntrackLocalLocked() bool            { return false }
-func (d *dummyEP) GetCIDRPrefixLengths() ([]int, []int)  { return nil, nil }
-func (d *dummyEP) GetID() uint64                         { return d.id }
-func (d *dummyEP) StringID() string                      { return "42" }
-func (d *dummyEP) GetIdentity() identity.NumericIdentity { return 42 }
-func (d *dummyEP) GetNodeMAC() mac.MAC                   { return nil }
-func (d *dummyEP) GetOptions() *option.IntOptions        { return d.opts }
-
-func (d *dummyEP) IPv4Address() addressing.CiliumIPv4 {
-	addr, _ := addressing.NewCiliumIPv4("192.0.2.3")
-	return addr
-}
-func (d *dummyEP) IPv6Address() addressing.CiliumIPv6 {
-	addr, _ := addressing.NewCiliumIPv6("::ffff:192.0.2.3")
-	return addr
 }
 
 type testCase struct {
