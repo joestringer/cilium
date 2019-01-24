@@ -29,6 +29,8 @@ import (
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/spanstat"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -141,12 +143,12 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 	objectPath := filepath.Join(templatePath, "bpf_lxc.o")
 
 	if err := os.MkdirAll(templatePath, defaults.StateDirRights); err != nil {
-		return "", err
+		return "", false, err
 	}
 
 	f, err := os.Create(headerPath)
 	if err != nil {
-		return "", &os.PathError{
+		return "", false, &os.PathError{
 			Op:   "failed to open template header for writing",
 			Path: headerPath,
 			Err:  err,
@@ -154,7 +156,7 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 	}
 
 	if err = o.Datapath.WriteEndpointConfig(f, cfg, false); err != nil {
-		return "", &os.PathError{
+		return "", false, &os.PathError{
 			Op:   "failed to write template header",
 			Path: headerPath,
 			Err:  err,
@@ -184,8 +186,9 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 // threads attempt to concurrently FetchOrCompile a template binary for the
 // same set of EndpointConfiguration.
 //
-// Returns the path to the compiled template datapath object or an error.
-func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointConfiguration) (string, error) {
+// Returns the path to the compiled template datapath object and whether the
+// object was compiled, or an error.
+func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointConfiguration) (string, bool, error) {
 	hash := o.baseHash.Copy().SumEndpoint(cfg)
 
 	// Look up the channel that serializes attempts to compile this cfg.
@@ -199,13 +202,13 @@ func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointC
 	// Wait on the channel until the build completes.
 	duration, err := c.wait(ctx)
 	if err != nil {
-		return "", fmt.Errorf("context cancelled while waiting for template compilation: %s", err)
+		return "", false, fmt.Errorf("context cancelled while waiting for template compilation: %s", err)
 	}
 
 	// Fetch the result of the compilation.
 	path, ok := o.lookup(hash)
 	if !ok {
-		return "", fmt.Errorf("peer compilation for this template failed")
+		return "", false, fmt.Errorf("peer compilation for this template failed")
 	}
 	log.WithFields(logrus.Fields{
 		logfields.Path:     path,

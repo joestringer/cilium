@@ -18,12 +18,15 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/cilium/cilium/pkg/datapath/linux"
+	"github.com/cilium/cilium/pkg/datapath/loader"
 	"github.com/cilium/cilium/pkg/testutils"
 
 	. "gopkg.in/check.v1"
@@ -35,6 +38,9 @@ type CacheSuite struct{}
 var (
 	_              = Suite(&CacheSuite{})
 	contextTimeout = 10 * time.Second
+
+	bpfDir     = filepath.Join("..", "..", "..", "bpf")
+	sourceName = "bpf_lxc.c"
 )
 
 func Test(t *testing.T) {
@@ -58,6 +64,10 @@ func (s *CacheSuite) TearDownSuite(c *C) {
 }
 
 func (s *CacheSuite) TestObjectCache(c *C) {
+	tmpDir, err := ioutil.TempDir("", "cilium_test")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(tmpDir)
+
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 
