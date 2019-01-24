@@ -223,3 +223,9 @@ func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointC
 // TODO: Implement, plumb somewhere
 func (o *ObjectCache) Flush() {
 }
+
+// HashEndpoint hashes the specified endpoint configuration with the current
+// datapath hash cache and returns the hash as string.
+func HashEndpoint(cfg datapath.EndpointConfiguration) string {
+	return Datapaths.baseHash.Copy().SumEndpoint(cfg)
+}
