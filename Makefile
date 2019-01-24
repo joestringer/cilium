@@ -45,7 +45,7 @@ jenkins-precheck:
 
 TEST_LDFLAGS=-ldflags "-X github.com/cilium/cilium/pkg/kvstore.consulDummyAddress=https://consul:8443 -X github.com/cilium/cilium/pkg/kvstore.etcdDummyAddress=http://etcd:4002 -X github.com/cilium/cilium/pkg/datapath.DatapathSHA=1234567890abcdef7890"
 
-PRIV_TEST_PKGS = $(shell grep --include='*.go' -ril '+build privileged_tests' | xargs dirname | sort | uniq)
+PRIV_TEST_PKGS ?= $(shell grep --include='*.go' -ril '+build privileged_tests' | xargs dirname | sort | uniq)
 tests-privileged:
 	# cilium-map-migrate is a dependency of some unit tests.
 	$(MAKE) -C bpf cilium-map-migrate
