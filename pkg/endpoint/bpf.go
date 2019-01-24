@@ -718,7 +718,7 @@ func (e *Endpoint) runPreCompilationSteps(owner Owner, regenContext *regeneratio
 
 	// Avoid BPF program compilation and installation if the headerfile for the endpoint
 	// or the node have not changed.
-	datapathRegenCtxt.bpfHeaderfilesHash = datapathcache.Copy().SumEndpoint(e)
+	datapathRegenCtxt.bpfHeaderfilesHash = datapathcache.HashDatapath(owner.Datapath(), nil, nil, e).String()
 	datapathRegenCtxt.bpfHeaderfilesChanged = (datapathRegenCtxt.bpfHeaderfilesHash != e.bpfHeaderfileHash)
 	e.getLogger().WithField(logfields.BPFHeaderfileHash, datapathRegenCtxt.bpfHeaderfilesHash).
 		Debugf("BPF header file hashed (was: %q)", e.bpfHeaderfileHash)

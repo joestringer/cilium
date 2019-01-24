@@ -28,10 +28,6 @@ var (
 	// which is hashed across all datapath template code, excluding the
 	// node, netdev, lxc and sockops header files (see daemon/Makefile).
 	DatapathSHA string
-
-	// nodeHash is initialized from InitDatapathHash() to take into account
-	// the DatapathSHA and the node and netdev configuration at init time.
-	nodeHash *Hash
 )
 
 // Hash represents a unique enumeration of the datapath implementation.
@@ -47,16 +43,6 @@ func NewHash(dp datapath.Datapath) *Hash {
 	io.WriteString(h, DatapathSHA)
 	return &Hash{
 		Datapath: dp,
-		Hash:     h,
-	}
-}
-
-// Copy the cached mash of the hashed datapath paths.
-func Copy() *Hash {
-	h := sha1.New()
-	io.WriteString(h, nodeHash.String())
-	return &Hash{
-		Datapath: nodeHash.Datapath,
 		Hash:     h,
 	}
 }
@@ -79,9 +65,14 @@ func HashDatapath(dp datapath.Datapath, nodeCfg *datapath.LocalNodeConfiguration
 	return h
 }
 
-// InitDatapathHash initializes a cache of the datapath hash for later reuse.
-func InitDatapathHash(dp datapath.Datapath, nodeCfg *datapath.LocalNodeConfiguration, netdevCfg datapath.DeviceConfiguration) {
-	nodeHash = HashDatapath(dp, nodeCfg, netdevCfg, nil)
+// Copy the cached mash of the hashed datapath paths.
+func (h *Hash) Copy() *Hash {
+	newHash := sha1.New()
+	io.WriteString(newHash, h.String())
+	return &Hash{
+		Datapath: h.Datapath,
+		Hash:     newHash,
+	}
 }
 
 // String returns a string representation of the underlying hash.

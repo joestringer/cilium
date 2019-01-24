@@ -160,6 +160,17 @@ func compileWithPath(ctx context.Context, src, outDir, outBase string) error {
 	return compile(ctx, &prog, &dirs, debug)
 }
 
+// CompileEndpoint compiles a BPF program generating a template object file.
+func CompileEndpoint(ctx context.Context, out string) error {
+	dirs := directoryInfo{
+		Library: option.Config.BpfDir,
+		Runtime: option.Config.StateDir,
+		Output:  out,
+		State:   out,
+	}
+	return compile(ctx, datapathProg, &dirs, option.Config.BPFCompilationDebug)
+}
+
 // Compile compiles a BPF program generating an object file.
 func Compile(ctx context.Context, src string, out string) error {
 	return compileWithPath(ctx, src, option.Config.StateDir, out)
