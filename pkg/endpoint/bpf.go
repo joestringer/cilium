@@ -17,10 +17,7 @@ package endpoint
 import (
 	"bufio"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
-	"hash"
 	"io"
 	"os"
 	"path"
@@ -33,6 +30,7 @@ import (
 	"github.com/cilium/cilium/pkg/bpf"
 	"github.com/cilium/cilium/pkg/completion"
 	"github.com/cilium/cilium/pkg/controller"
+	datapathcache "github.com/cilium/cilium/pkg/datapath/cache"
 	"github.com/cilium/cilium/pkg/datapath/loader"
 	"github.com/cilium/cilium/pkg/loadinfo"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -155,63 +153,6 @@ func (e *Endpoint) writeHeaderfile(prefix string, owner Owner) error {
 		return err
 	}
 	return owner.Datapath().WriteEndpointConfig(f, e, true)
-}
-
-// hashEndpointHeaderFiles returns the MD5 hash of any header files that are
-// used in the compilation of an endpoint's BPF program. Currently, this
-// includes the endpoint's headerfile, and the node's headerfile.
-func hashEndpointHeaderfiles(prefix string) (string, error) {
-	endpointHeaderPath := filepath.Join(prefix, common.CHeaderFileName)
-	hashWriter := md5.New()
-	hashWriter, err := hashHeaderfile(hashWriter, endpointHeaderPath)
-	if err != nil {
-		return "", err
-	}
-
-	hashWriter, err = hashHeaderfile(hashWriter, option.Config.GetNodeConfigPath())
-	if err != nil {
-		return "", err
-	}
-
-	combinedHeaderHashSum := hashWriter.Sum(nil)
-	return hex.EncodeToString(combinedHeaderHashSum[:]), nil
-}
-
-// hashHeaderfile returns the hash of the BPF headerfile at the given filepath.
-// This ignores all lines that don't start with "#", incl. all comments, since
-// they have no effect on the BPF compilation.
-func hashHeaderfile(hashWriter hash.Hash, filepath string) (hash.Hash, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	reader := bufio.NewReader(file)
-	firstFragmentOfLine := true
-	lineToHash := false
-	for {
-		fragment, isPrefix, err := reader.ReadLine()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		if firstFragmentOfLine && len(fragment) > 0 && fragment[0] == '#' {
-			lineToHash = true
-		}
-		if lineToHash {
-			hashWriter.Write(fragment)
-		}
-		firstFragmentOfLine = !isPrefix
-		if firstFragmentOfLine {
-			// The next fragment is the beginning of a new line.
-			lineToHash = false
-		}
-	}
-
-	return hashWriter, nil
 }
 
 // addNewRedirectsFromMap must be called while holding the endpoint lock for
@@ -767,16 +708,10 @@ func (e *Endpoint) runPreCompilationSteps(owner Owner, regenContext *regeneratio
 
 	// Avoid BPF program compilation and installation if the headerfile for the endpoint
 	// or the node have not changed.
-	datapathRegenCtxt.bpfHeaderfilesHash, err = hashEndpointHeaderfiles(nextDir)
-	if err != nil {
-		e.getLogger().WithError(err).Warn("Unable to hash header file")
-		datapathRegenCtxt.bpfHeaderfilesHash = ""
-		datapathRegenCtxt.bpfHeaderfilesChanged = true
-	} else {
-		datapathRegenCtxt.bpfHeaderfilesChanged = (datapathRegenCtxt.bpfHeaderfilesHash != e.bpfHeaderfileHash)
-		e.getLogger().WithField(logfields.BPFHeaderfileHash, datapathRegenCtxt.bpfHeaderfilesHash).
-			Debugf("BPF header file hashed (was: %q)", e.bpfHeaderfileHash)
-	}
+	datapathRegenCtxt.bpfHeaderfilesHash = datapathcache.Copy().SumEndpoint(e)
+	datapathRegenCtxt.bpfHeaderfilesChanged = (datapathRegenCtxt.bpfHeaderfilesHash != e.bpfHeaderfileHash)
+	e.getLogger().WithField(logfields.BPFHeaderfileHash, datapathRegenCtxt.bpfHeaderfilesHash).
+		Debugf("BPF header file hashed (was: %q)", e.bpfHeaderfileHash)
 
 	// Cache endpoint information so that we can release the endpoint lock.
 	if datapathRegenCtxt.bpfHeaderfilesChanged {
