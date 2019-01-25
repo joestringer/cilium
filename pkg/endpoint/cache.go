@@ -15,8 +15,14 @@
 package endpoint
 
 import (
+	"fmt"
+
+	"github.com/cilium/cilium/common/addressing"
+	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/cilium/pkg/mac"
 	"github.com/cilium/cilium/pkg/maps/lxcmap"
+	"github.com/cilium/cilium/pkg/option"
 
 	"github.com/sirupsen/logrus"
 )
@@ -36,9 +42,15 @@ type epInfoCache struct {
 
 	// For datapath.loader.endpoint
 	epdir       string
-	id          string
+	id          uint64
 	ifName      string
 	graftToLoad bool
+
+	// For datapath.EndpointConfiguration
+	identity identity.NumericIdentity
+	mac      mac.MAC
+	ipv4     addressing.CiliumIPv4
+	ipv6     addressing.CiliumIPv6
 
 	// endpoint is used to get the endpoint's logger.
 	//
@@ -55,7 +67,10 @@ func (e *Endpoint) createEpInfoCache(epdir string) *epInfoCache {
 		revision:    e.nextPolicyRevision,
 		endpoint:    e,
 		epdir:       epdir,
-		id:          e.StringID(),
+		id:          e.GetID(),
+		identity:    e.GetIdentity(),
+		ipv4:        e.IPv4Address(),
+		ipv6:        e.IPv6Address(),
 		ifName:      e.IfName,
 		keys:        e.GetBPFKeys(),
 		graftToLoad: e.MustGraft(),
@@ -81,9 +96,19 @@ func (ep *epInfoCache) MapPath() string {
 	return ep.endpoint.BPFIpvlanMapPath()
 }
 
+// GetID returns the endpoint's ID.
+func (ep *epInfoCache) GetID() uint64 {
+	return ep.id
+}
+
 // StringID returns the endpoint's ID in a string.
 func (ep *epInfoCache) StringID() string {
-	return ep.id
+	return fmt.Sprintf("%d", ep.id)
+}
+
+// GetIdentity returns the security identity of the endpoint.
+func (ep *epInfoCache) GetIdentity() identity.NumericIdentity {
+	return ep.identity
 }
 
 // Logger returns the logger for the endpoint that is being cached.
@@ -96,10 +121,19 @@ func (ep *epInfoCache) MustGraft() bool {
 	return ep.graftToLoad
 }
 
-// StateDir returns the directory for the endpoint's (next) state.
-func (ep *epInfoCache) StateDir() string {
-	return ep.epdir
+// IPv4Address returns the cached IPv4 address for the endpoint.
+func (ep *epInfoCache) IPv4Address() addressing.CiliumIPv4 {
+	return ep.ipv4
 }
+
+// IPv6Address returns the cached IPv6 address for the endpoint.
+func (ep *epInfoCache) IPv6Address() addressing.CiliumIPv6 {
+	return ep.ipv6
+}
+
+// StateDir returns the directory for the endpoint's (next) state.
+func (ep *epInfoCache) StateDir() string    { return ep.epdir }
+func (ep *epInfoCache) GetNodeMAC() mac.MAC { return ep.mac }
 
 // GetBPFKeys returns all keys which should represent this endpoint in the BPF
 // endpoints map
@@ -112,4 +146,24 @@ func (ep *epInfoCache) GetBPFKeys() []*lxcmap.EndpointKey {
 // Must only be called if init() succeeded.
 func (ep *epInfoCache) GetBPFValue() (*lxcmap.EndpointInfo, error) {
 	return ep.value, nil
+}
+
+func (ep *epInfoCache) ConntrackLocalLocked() bool {
+	// TODO: pipe this through
+	return false
+}
+
+func (ep *epInfoCache) staticDataToMap() map[string]uint32 {
+	// TODO: implement
+	return nil
+}
+
+func (ep *epInfoCache) GetCIDRPrefixLengths() ([]int, []int) {
+	// TODO: implement
+	return nil, nil
+}
+
+func (ep *epInfoCache) GetOptions() *option.IntOptions {
+	// TODO: implement
+	return nil
 }

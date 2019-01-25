@@ -32,6 +32,7 @@ import (
 	"github.com/cilium/cilium/pkg/controller"
 	datapathcache "github.com/cilium/cilium/pkg/datapath/cache"
 	"github.com/cilium/cilium/pkg/datapath/loader"
+	"github.com/cilium/cilium/pkg/elf"
 	"github.com/cilium/cilium/pkg/loadinfo"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	bpfconfig "github.com/cilium/cilium/pkg/maps/configmap"
@@ -496,23 +497,48 @@ func (e *Endpoint) regenerateBPF(owner Owner, regenContext *regenerationContext)
 	return datapathRegenCtxt.epInfoCache.revision, compilationExecuted, err
 }
 
+func compileAndLoad(dpContext *datapathRegenerationContext, ep *epInfoCache, stats *datapathcache.SpanStat) error {
+	ctx := dpContext.completionCtx
+	templatePath, _, err := datapathcache.Datapaths.FetchOrCompile(ctx, ep, stats)
+	if err != nil {
+		return err
+	}
+
+	template, err := elf.Open(templatePath)
+	if err != nil {
+		return err
+	}
+	defer template.Close()
+
+	// TODO: Pass a real path here
+	dstPath := path.Join(dpContext.nextDir, "bpf_lxc.o")
+	opts, strings := ep.ToBPFData()
+	if err = template.Write(dstPath, opts, strings); err != nil {
+		return err
+	}
+
+	err = loader.ReloadDatapath(ctx, ep)
+
+	return err
+}
+
 func (e *Endpoint) realizeBPFState(regenContext *regenerationContext) (compilationExecuted bool, err error) {
-	stats := &regenContext.Stats
+	stats := &regenContext.Stats.datapathRealization
 	datapathRegenCtxt := regenContext.datapathRegenerationContext
 
 	e.getLogger().WithField("bpfHeaderfilesChanged", datapathRegenCtxt.bpfHeaderfilesChanged).Debug("Preparing to compile BPF")
 
+	// TODO: Check that we can't modify some of the static data:
+	//       If we can, we need a mechanism to handle ELF rewrite + reload
 	if datapathRegenCtxt.bpfHeaderfilesChanged || datapathRegenCtxt.reloadDatapath {
 		closeChan := loadinfo.LogPeriodicSystemLoad(log.WithFields(logrus.Fields{logfields.EndpointID: e.StringID()}).Debugf, time.Second)
 
 		// Compile and install BPF programs for this endpoint
 		if datapathRegenCtxt.bpfHeaderfilesChanged {
-			stats.bpfCompilation.Start()
-			err = loader.CompileAndLoad(datapathRegenCtxt.completionCtx, datapathRegenCtxt.epInfoCache)
-			stats.bpfCompilation.End(err == nil)
-			e.getLogger().WithError(err).
-				WithField(logfields.BPFCompilationTime, stats.bpfCompilation.Total().String()).
-				Info("Recompiled endpoint BPF program")
+			err = compileAndLoad(datapathRegenCtxt, datapathRegenCtxt.epInfoCache, stats)
+			e.getLogger().WithError(err).Info("Rewrote endpoint BPF program")
+
+			// TODO: See what the implications of this are
 			compilationExecuted = true
 		} else {
 			err = loader.ReloadDatapath(datapathRegenCtxt.completionCtx, datapathRegenCtxt.epInfoCache)
