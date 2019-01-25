@@ -244,9 +244,7 @@ static inline int ipv4_to_ipv6(struct __sk_buff *skb, struct iphdr *ip4,
 	__be16 v4hdr_len;
 	__be16 protocol = bpf_htons(ETH_P_IPV6);
 	__u64 csum_flags = BPF_F_PSEUDO_HDR;
-	union v6addr nat46_prefix = {};
-
-	BPF_V6(nat46_prefix, NAT46_PREFIX);
+	union v6addr nat46_prefix = NAT46_PREFIX;
 
 	if (skb_load_bytes(skb, nh_off, &v4, sizeof(v4)) < 0)
 		return DROP_INVALID;
