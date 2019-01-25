@@ -164,7 +164,7 @@ func (o *ObjectCache) build(ctx context.Context, cfg *templateCfg, hash string) 
 
 	log.WithFields(logrus.Fields{
 		logfields.Path:               objectPath,
-		logfields.BPFCompilationTime: stat.Total(),
+		logfields.BPFCompilationTime: cfg.stats.bpfCompilation.Total(),
 	}).Info("Compiled new BPF template")
 
 	o.insert(hash, objectPath)
