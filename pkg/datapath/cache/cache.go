@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/cilium/cilium/common"
 	"github.com/cilium/cilium/pkg/datapath"
@@ -28,7 +27,6 @@ import (
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
-	"github.com/cilium/cilium/pkg/spanstat"
 
 	"github.com/sirupsen/logrus"
 )
@@ -48,19 +46,13 @@ func InitCache(dp datapath.Datapath, nodeCfg *datapath.LocalNodeConfiguration) {
 // buildChan is closed when a build is completed, successful or not.
 type buildChan chan struct{}
 
-func (b buildChan) wait(ctx context.Context) (time.Duration, error) {
-	var err error
-
-	stat := spanstat.SpanStat{}
-	stat.Start()
+func (b buildChan) wait(ctx context.Context) error {
 	select {
 	case <-b:
 	case <-ctx.Done():
-		err = ctx.Err()
+		return ctx.Err()
 	}
-	stat.End(err == nil)
-
-	return stat.Total(), err
+	return nil
 }
 
 // ObjectCache is a map from a hash of the datapath to the path on the
@@ -137,7 +129,7 @@ func (o *ObjectCache) insert(hash, objectPath string) {
 // build attempts to compile and cache a datapath template object file
 // corresponding to the specified endpoint configuration. If successful,
 // returns the filesystem path to the object file, otherwise an error.
-func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfiguration, hash string) (string, bool, error) {
+func (o *ObjectCache) build(ctx context.Context, cfg *templateCfg, hash string) (string, bool, error) {
 	templatePath := filepath.Join(o.workingDirectory, "templates", hash)
 	headerPath := filepath.Join(templatePath, common.CHeaderFileName)
 	objectPath := filepath.Join(templatePath, "bpf_lxc.o")
@@ -155,7 +147,7 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 		}
 	}
 
-	if err = o.Datapath.WriteEndpointConfig(f, cfg, false); err != nil {
+	if err = o.Datapath.WriteEndpointConfig(f, cfg, true); err != nil {
 		return "", false, &os.PathError{
 			Op:   "failed to write template header",
 			Path: headerPath,
@@ -163,17 +155,16 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 		}
 	}
 
-	stat := spanstat.SpanStat{}
-	stat.Start()
+	cfg.stats.bpfCompilation.Start()
 	err = loader.CompileEndpoint(ctx, templatePath)
-	stat.End(err == nil)
+	cfg.stats.bpfCompilation.End(err == nil)
 	if err != nil {
 		return "", false, err
 	}
 
 	log.WithFields(logrus.Fields{
-		logfields.Path:     objectPath,
-		logfields.Duration: stat.Total(),
+		logfields.Path:               objectPath,
+		logfields.BPFCompilationTime: stat.Total(),
 	}).Info("Compiled new BPF template")
 
 	o.insert(hash, objectPath)
@@ -188,19 +179,19 @@ func (o *ObjectCache) build(ctx context.Context, cfg datapath.EndpointConfigurat
 //
 // Returns the path to the compiled template datapath object and whether the
 // object was compiled, or an error.
-func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointConfiguration) (string, bool, error) {
+func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointConfiguration, stats *SpanStat) (string, bool, error) {
 	hash := o.baseHash.Copy().SumEndpoint(cfg)
 
 	// Look up the channel that serializes attempts to compile this cfg.
 	c, compiled := o.serialize(hash)
 	if !compiled {
 		defer close(c)
-		templateCfg := wrap(cfg)
+		templateCfg := wrap(cfg, stats)
 		return o.build(ctx, templateCfg, hash)
 	}
 
 	// Wait on the channel until the build completes.
-	duration, err := c.wait(ctx)
+	err := c.wait(ctx)
 	if err != nil {
 		return "", false, fmt.Errorf("context cancelled while waiting for template compilation: %s", err)
 	}
@@ -210,10 +201,6 @@ func (o *ObjectCache) FetchOrCompile(ctx context.Context, cfg datapath.EndpointC
 	if !ok {
 		return "", false, fmt.Errorf("peer compilation for this template failed")
 	}
-	log.WithFields(logrus.Fields{
-		logfields.Path:     path,
-		logfields.Duration: duration,
-	}).Debugf("Reusing BPF object template")
 
 	return path, false, nil
 }

@@ -37,6 +37,7 @@ import (
 // as allowing traffic to leak out with routable addresses.
 type templateCfg struct {
 	datapath.EndpointConfiguration
+	stats *SpanStat
 }
 
 // GetID returns a uint64, but in practice on the datapath side it is
@@ -73,8 +74,16 @@ func (t *templateCfg) IPv6Address() addressing.CiliumIPv6 {
 	return addressing.CiliumIPv6([]byte{0x20, 0x01, 0xdb, 0x8, 0x0b, 0xad, 0xca, 0xfe, 0x60, 0x0d, 0xbe, 0xe2, 0x0b, 0xad, 0xca, 0xfe})
 }
 
-func wrap(cfg datapath.EndpointConfiguration) datapath.EndpointConfiguration {
+// wrap takes an endpoint configuration and optional stats tracker and wraps
+// it inside a templateCfg which hides static data from callers that wish to
+// generate header files based on the configuration, substituting it for
+// template data.
+func wrap(cfg datapath.EndpointConfiguration, stats *SpanStat) *templateCfg {
+	if stats == nil {
+		stats = &SpanStat{}
+	}
 	return &templateCfg{
 		EndpointConfiguration: cfg,
+		stats:                 stats,
 	}
 }
