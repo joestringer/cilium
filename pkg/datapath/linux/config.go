@@ -193,7 +193,7 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 	}
 
 	switch {
-	case !e.HasIpvlanDataPath():
+	case !e.MustGraft():
 		fmt.Fprint(fw, "#define ENABLE_ARP_RESPONDER 1\n")
 		fmt.Fprint(fw, "#define ENABLE_HOST_REDIRECT 1\n")
 		if option.Config.IsFlannelMasterDeviceSet() {

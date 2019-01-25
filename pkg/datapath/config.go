@@ -51,7 +51,6 @@ type EndpointConfiguration interface {
 	IPv6Address() addressing.CiliumIPv6
 	GetNodeMAC() mac.MAC
 
-	// TODO: Move this detail into the datapath
-	HasIpvlanDataPath() bool
+	MustGraft() bool
 	ConntrackLocalLocked() bool
 }
