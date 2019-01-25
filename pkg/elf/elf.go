@@ -29,7 +29,7 @@ import (
 type ELF struct {
 	*elf.File
 
-	symbols Symbols
+	symbols symbols
 	path    string
 	file    *os.File // TODO: Make this buffered with a shared buffer?
 }

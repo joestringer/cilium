@@ -94,14 +94,14 @@ func (c symbolSlice) sort() symbolSlice {
 	return c
 }
 
-type Symbols struct {
+type symbols struct {
 	// data caches static 32-bit variables by name.
 	data map[string]symbol
 	// strings caches string symbols by name.
 	strings map[string]symbol
 }
 
-func (s *Symbols) sort() symbolSlice {
+func (s *symbols) sort() symbolSlice {
 	result := make(symbolSlice, 0)
 	for _, c := range s.data {
 		result = append(result, c)
