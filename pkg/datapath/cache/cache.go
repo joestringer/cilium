@@ -38,8 +38,11 @@ var (
 	Datapaths ObjectCache
 )
 
-// InitCache initializes the datapath cache.
-func InitCache(dp datapath.Datapath, nodeCfg *datapath.LocalNodeConfiguration) {
+// Init initializes the datapath cache with base program hashes derived from
+// the LocalNodeConfiguration.
+//
+// TODO: Consider re-initialization; locking requirements
+func Init(dp datapath.Datapath, nodeCfg *datapath.LocalNodeConfiguration) {
 	Datapaths = NewObjectCache(dp, nodeCfg)
 }
 

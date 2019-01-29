@@ -39,6 +39,7 @@ import (
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/counter"
 	"github.com/cilium/cilium/pkg/datapath"
+	datapathcache "github.com/cilium/cilium/pkg/datapath/cache"
 	bpfIPCache "github.com/cilium/cilium/pkg/datapath/ipcache"
 	"github.com/cilium/cilium/pkg/datapath/iptables"
 	"github.com/cilium/cilium/pkg/datapath/prefilter"
@@ -320,6 +321,7 @@ func (d *Daemon) writeNetdevHeader(dir string) error {
 	if err := d.datapath.WriteNetdevConfig(f, d); err != nil {
 		return err
 	}
+	datapathcache.Init(d.datapath, &d.nodeDiscovery.localConfig)
 	return nil
 }
 
@@ -651,6 +653,8 @@ func (d *Daemon) init() error {
 		if err := d.compileBase(); err != nil {
 			return err
 		}
+
+		datapathcache.Init(d.datapath, &d.nodeDiscovery.localConfig)
 	}
 
 	return nil
@@ -668,6 +672,8 @@ func (d *Daemon) createNodeConfigHeaderfile() error {
 		log.WithError(err).WithField(logfields.Path, nodeConfigPath).Fatal("Failed to create node configuration file")
 		return err
 	}
+
+	datapathcache.Init(d.datapath, &d.nodeDiscovery.localConfig)
 	return nil
 }
 
