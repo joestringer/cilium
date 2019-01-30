@@ -81,7 +81,7 @@ func (l *linuxDatapath) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeConf
 	fmt.Fprintf(fw, "#define IPV4_MASK %#x\n", byteorder.HostSliceToNetwork(ipv4Range.Mask, reflect.Uint32).(uint32))
 
 	if nat46Range := option.Config.NAT46Prefix; nat46Range != nil {
-		fmt.Fprint(fw, "#define NAT46_PREFIX { .addr = { %s } }", goArray2C(nat46Range.IP))
+		fmt.Fprintf(fw, "#define NAT46_PREFIX { .addr = { %s } }\n", goArray2C(nat46Range.IP))
 	}
 
 	fmt.Fprint(fw, defineIPv6("HOST_IP", hostIP))
