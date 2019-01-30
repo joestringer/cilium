@@ -15,10 +15,16 @@
 package cache
 
 import (
+	"fmt"
+
 	"github.com/cilium/cilium/common/addressing"
 	"github.com/cilium/cilium/pkg/datapath"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/mac"
+)
+
+var (
+	TemplateID = uint64(65535)
 )
 
 // templateCfg wraps a real configuration from an endpoint to pass through its
@@ -47,10 +53,10 @@ type templateCfg struct {
 //
 // By using 65536, (0x10000 in hex), the ID would be zero if truncated to 16
 // bits, and when read in decimal it is an obviously nonsense endpoint ID.
-func (t *templateCfg) GetID() uint64 { return 65536 }
+func (t *templateCfg) GetID() uint64 { return TemplateID }
 
 // StringID returns the string form of the ID returned by GetID().
-func (t *templateCfg) StringID() string { return "65536" }
+func (t *templateCfg) StringID() string { return fmt.Sprintf("%d", TemplateID) }
 
 // GetIdentity should ideally return a security ID that will never be allocated
 // for an actual set of labels, so use UINT32_MAX here.

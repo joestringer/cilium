@@ -186,7 +186,7 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 		fmt.Fprint(fw, defineIPv6("LXC_IP", e.IPv6Address()))
 		fmt.Fprintf(fw, "#define LXC_IPV4 %#x\n", byteorder.HostSliceToNetwork(e.IPv4Address(), reflect.Uint32))
 
-		fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
+		//fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
 		fmt.Fprintf(fw, "#define LXC_ID %#x\n", e.GetID())
 
 		secID := e.GetIdentity()
@@ -197,6 +197,9 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 		fmt.Fprintf(fw, "#define CALLS_MAP %s\n", mapPath("cilium_calls_", e))
 		fmt.Fprintf(fw, "#define CONFIG_MAP %s\n", mapPath(bpfconfig.MapNamePrefix, e))
 	}
+
+	// TODO: Handle 64-bit values
+	fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
 
 	fmt.Fprint(fw, "#define LB_L3\n")
 	fmt.Fprint(fw, "#define LB_L4\n")
