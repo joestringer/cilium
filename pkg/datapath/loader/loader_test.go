@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/cilium/pkg/elf"
 	"github.com/cilium/cilium/pkg/testutils"
 
 	"github.com/vishvananda/netlink"
@@ -247,6 +248,57 @@ func BenchmarkReplaceDatapath(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if err := replaceDatapath(ctx, ep.InterfaceName(), objPath, symbolFromEndpoint); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func getDemoPath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Failed to get working directory: %s", err)
+	}
+
+	return path.Join(wd, "..", "..", "test", "bpf", "elf-demo.c"), nil
+}
+
+// BenchmarkWriteELF
+func BenchmarkWriteELF(b *testing.B) {
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
+
+	sourcePath, err := getDemoPath()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tmpDir, err := ioutil.TempDir("", "cilium_")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Compile and open the elf demo from `test/bpf/elf-demo.c`.
+	baseObject := path.Join(tmpDir, elfObjBase)
+	err = CompileToFullPath(ctx, sourcePath, baseObject)
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	e, err := elf.Open(baseObject)
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer e.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		intOptions := make(map[string]uint32)
+		strOptions := make(map[string]string)
+
+		objectCopy := path.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
+		if err = e.Write(objectCopy, intOptions, strOptions); err != nil {
 			b.Fatal(err)
 		}
 	}
