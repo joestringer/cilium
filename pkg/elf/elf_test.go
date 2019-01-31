@@ -208,3 +208,50 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 		modifiedElf.Close()
 	}
 }
+
+// BenchmarkWriteELF
+func BenchmarkWriteELF(b *testing.B) {
+	loader.SetTestIncludes([]string{"-I../../bpf", "-I../../bpf/include"})
+	defer loader.SetTestIncludes(nil)
+
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
+
+	sourcePath, err := getDemoPath()
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tmpDir, err := ioutil.TempDir("", "cilium_")
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Compile and open the elf demo from `test/bpf/elf-demo.c`.
+	baseObject := path.Join(tmpDir, elfObjBase)
+	err = loader.CompileToFullPath(ctx, sourcePath, baseObject)
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	elf, err := Open(baseObject)
+	//c.Assert(err, IsNil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer elf.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		intOptions := make(map[string]uint32)
+		strOptions := make(map[string]string)
+
+		objectCopy := path.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
+		if err = elf.Write(objectCopy, intOptions, strOptions); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
