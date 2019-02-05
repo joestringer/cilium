@@ -17,6 +17,9 @@ package linux
 import (
 	"fmt"
 	"net"
+	"reflect"
+
+	"github.com/cilium/cilium/pkg/byteorder"
 )
 
 // goArray2C transforms a byte slice into its hexadecimal string representation.
@@ -34,6 +37,21 @@ func goArray2C(array []byte) string {
 		}
 	}
 	return ret
+}
+
+// defineUint32 writes the C definition for an unsigned 32-bit value.
+func defineUint32(name string, value uint32) string {
+	return fmt.Sprintf("DEFINE_U32(%s, %#08x);\t/* %d */\n#define %s fetch_u32(%s)\n",
+		name, value, value, name, name)
+}
+
+// defineIPv4 writes the C definition for the given IPv4 address.
+func defineIPv4(name string, addr []byte) string {
+	if len(addr) != net.IPv4len {
+		return fmt.Sprintf("/* BUG: bad ip define %s %s */\n", name, goArray2C(addr))
+	}
+	nboAddr := byteorder.HostSliceToNetwork(addr, reflect.Uint32).(uint32)
+	return defineUint32(name, nboAddr)
 }
 
 // defineIPv6 writes the C definition for the given IPv6 address.

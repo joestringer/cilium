@@ -184,14 +184,15 @@ func (l *linuxDatapath) WriteEndpointConfig(w io.Writer, e datapath.EndpointConf
 	//      variable substitution
 	if staticData {
 		fmt.Fprint(fw, defineIPv6("LXC_IP", e.IPv6Address()))
-		fmt.Fprintf(fw, "#define LXC_IPV4 %#x\n", byteorder.HostSliceToNetwork(e.IPv4Address(), reflect.Uint32))
+		fmt.Fprintf(fw, defineIPv4("LXC_IPV4", e.IPv4Address()))
 
 		//fmt.Fprint(fw, defineMAC("NODE_MAC", e.GetNodeMAC()))
-		fmt.Fprintf(fw, "#define LXC_ID %#x\n", e.GetID())
+		fmt.Fprintf(fw, defineUint32("LXC_ID", uint32(e.GetID())))
+		fmt.Fprint(fw, "#define TEMPLATE_LXC_ID 0xffff\n")
 
-		secID := e.GetIdentity()
-		fmt.Fprintf(fw, "#define SECLABEL %s\n", secID.StringID())
-		fmt.Fprintf(fw, "#define SECLABEL_NB %#x\n", byteorder.HostToNetwork(secID.Uint32()))
+		secID := e.GetIdentity().Uint32()
+		fmt.Fprintf(fw, defineUint32("SECLABEL", secID))
+		fmt.Fprintf(fw, defineUint32("SECLABEL_NB", byteorder.HostToNetwork(secID).(uint32)))
 
 		fmt.Fprintf(fw, "#define POLICY_MAP %s\n", mapPath(policymap.MapName, e))
 		fmt.Fprintf(fw, "#define CALLS_MAP %s\n", mapPath("cilium_calls_", e))

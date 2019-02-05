@@ -22,7 +22,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
@@ -56,7 +55,7 @@ const (
 
 // mapPath returns the path to a map for endpoint ID.
 func (e *Endpoint) mapPath(mapname string) string {
-	return bpf.MapPath(mapname + strconv.Itoa(int(e.ID)))
+	return bpf.MapPath(fmt.Sprintf("%s%05d", mapname, e.ID))
 }
 
 // PolicyMapPathLocked returns the path to the policy map of endpoint.

@@ -221,10 +221,12 @@ func (ep *epInfoCache) stringsToMap() map[string]string {
 		bpfconfig.MapNamePrefix,
 	}
 	for _, name := range mapNames {
+		// TODO: Centralize creating map names
 		templateStr := path.Base(bpf.MapPath(fmt.Sprintf("%s%05d", name, datapathcache.TemplateID)))
 		desiredStr := path.Base(bpf.MapPath(fmt.Sprintf("%s%05d", name, ep.GetID())))
 		result[templateStr] = desiredStr
 	}
+	// TODO: Replace "1" with CILIUM_MAP_POLICY (GlobalPolicyMap ID)
 	result[fmt.Sprintf("1/%#04x", datapathcache.TemplateID)] = fmt.Sprintf("1/%#04x", ep.GetID())
 	return result
 }
