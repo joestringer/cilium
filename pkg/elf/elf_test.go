@@ -22,7 +22,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -36,7 +36,6 @@ var (
 	_              = Suite(&ELFTestSuite{})
 	contextTimeout = 10 * time.Second
 
-	elfObjBase = "elf-demo.o"
 	elfObjCopy = "elf-demo-copy.o"
 )
 
@@ -84,13 +83,23 @@ func compareFiles(path1, path2 string) error {
 	return nil
 }
 
+func getDemoPath() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("Failed to get working directory: %s", err)
+	}
+
+	return filepath.Join(wd, "..", "..", "test", "bpf", "elf-demo.o"), nil
+}
+
 func (s *ELFTestSuite) TestWrite(c *C) {
 	tmpDir, err := ioutil.TempDir("", "cilium_")
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(tmpDir)
 
-	// Compile and open the elf demo from `test/bpf/elf-demo.c`.
-	baseObject := path.Join("../../test/bpf", elfObjBase)
+	// Open the elf demo compiled from `test/bpf/elf-demo.c`.
+	baseObject, err := getDemoPath()
+	c.Assert(err, IsNil)
 	elf, err := Open(baseObject)
 	c.Assert(err, IsNil)
 	defer elf.Close()
@@ -156,7 +165,7 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 		case symbolString:
 			strOptions[test.key] = test.strValue
 		}
-		objectCopy := path.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
+		objectCopy := filepath.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
 		err = elf.Write(objectCopy, intOptions, strOptions)
 		c.Assert(err, test.elfValid)
 		if test.elfValid == notValidOptions {
@@ -183,5 +192,36 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 			c.Assert(err, NotNil)
 		}
 		modifiedElf.Close()
+	}
+}
+
+// BenchmarkWriteELF benchmarks writing a very simple elf demo program.
+func BenchmarkWriteELF(b *testing.B) {
+	tmpDir, err := ioutil.TempDir("", "cilium_")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	baseObject, err := getDemoPath()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	elf, err := Open(baseObject)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer elf.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		intOptions := make(map[string]uint32)
+		strOptions := make(map[string]string)
+
+		objectCopy := filepath.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
+		if err = elf.Write(objectCopy, intOptions, strOptions); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
