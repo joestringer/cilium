@@ -204,6 +204,14 @@ func (ep *epInfoCache) staticDataToMap() map[string]uint32 {
 	return result
 }
 
+// ToBPFData converts the endpoint cache's static data (consistent with
+// WriteEndpointConfig() in pkg/datapath/linux), into two maps:
+// * The first represents static 32-bit data held in the ELF .data section
+// * The second represents string values held in the ELF .strtab section
+func (ep *epInfoCache) ToBPFData() (map[string]uint32, map[string]string) {
+	return ep.staticDataToMap(), loader.MapELFSubstitutions(ep)
+}
+
 func (ep *epInfoCache) GetCIDRPrefixLengths() ([]int, []int) {
 	return ep.cidr6PrefixLengths, ep.cidr4PrefixLengths
 }

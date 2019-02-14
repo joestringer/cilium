@@ -76,3 +76,7 @@ func (e *TestEndpoint) MapPath() string {
 func (e *TestEndpoint) MustGraftDatapathMap() bool {
 	return false
 }
+
+func (e *TestEndpoint) ToBPFData() (map[string]uint32, map[string]string) {
+	return nil, nil
+}

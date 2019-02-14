@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/cilium/cilium/pkg/bpf"
-	"github.com/cilium/cilium/pkg/endpoint"
+	"github.com/cilium/cilium/pkg/datapath/loader"
 	"github.com/cilium/cilium/pkg/endpointmanager"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -88,7 +88,7 @@ func staleMapWalker(path string) error {
 		ctmap.MapNameTCP4,
 		ctmap.MapNameAny6,
 		ctmap.MapNameAny4,
-		endpoint.CallsMapName,
+		loader.CallsMapName,
 		bpfconfig.MapNamePrefix,
 	}
 
