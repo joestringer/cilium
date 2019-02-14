@@ -128,6 +128,18 @@ func getSectionHeaderSize(e *ELF) uint64 {
 	return 0
 }
 
+func variableOffset(e *ELF) (uint64, error) {
+	switch e.Class {
+	case elf.ELFCLASS32:
+		var sym32 elf.Sym32
+		return uint64(unsafe.Offsetof(sym32.Value)), nil
+	case elf.ELFCLASS64:
+		var sym64 elf.Sym64
+		return uint64(unsafe.Offsetof(sym64.Value)), nil
+	}
+	return 0, fmt.Errorf("Unsupported ELF type %d", e.Class)
+}
+
 func readStringOffset(e *ELF, r io.ReadSeeker, symbolOffset int64) (uint64, error) {
 	if _, err := r.Seek(symbolOffset, io.SeekStart); err != nil {
 		return 0, err
@@ -182,6 +194,16 @@ func (s *symbols) extractFrom(e *ELF) error {
 			offset := section.Offset + sym.Value
 			dataOffsets[sym.Name] = newVariable(sym.Name, offset)
 			log.WithField(fieldSymbol, sym.Name).Debugf("Found variable with offset %d", offset)
+		case sym.Section == 0:
+			// Offset from start of binary to symbol value
+			symbolOffset := uint64(i+1) * symtab.Entsize
+			offsetInSymbol, err := variableOffset(e)
+			if err != nil {
+				return err
+			}
+			offset := symtab.Offset + symbolOffset + offsetInSymbol
+			dataOffsets[sym.Name] = newVariable(sym.Name, offset)
+			log.WithField(fieldSymbol, sym.Name).Warnf("Found direct variable with offset %d", offset)
 		case section.Name == mapSection:
 			// From the Golang Documentation:
 			//   "For compatibility with Go 1.0, Symbols omits the
