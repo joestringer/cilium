@@ -259,7 +259,7 @@ func getDemoPath() (string, error) {
 		return "", fmt.Errorf("Failed to get working directory: %s", err)
 	}
 
-	return path.Join(wd, "..", "..", "test", "bpf", "elf-demo.c"), nil
+	return filepath.Join(wd, "..", "..", "test", "bpf", "elf-demo.c"), nil
 }
 
 // BenchmarkWriteELF
@@ -279,7 +279,7 @@ func BenchmarkWriteELF(b *testing.B) {
 	defer os.RemoveAll(tmpDir)
 
 	// Compile and open the elf demo from `test/bpf/elf-demo.c`.
-	baseObject := path.Join(tmpDir, elfObjBase)
+	baseObject := filepath.Join(tmpDir, "elf-demo.c")
 	err = CompileToFullPath(ctx, sourcePath, baseObject)
 	//c.Assert(err, IsNil)
 	if err != nil {
@@ -297,7 +297,7 @@ func BenchmarkWriteELF(b *testing.B) {
 		intOptions := make(map[string]uint32)
 		strOptions := make(map[string]string)
 
-		objectCopy := path.Join(tmpDir, fmt.Sprintf("%d_%s", i, elfObjCopy))
+		objectCopy := filepath.Join(tmpDir, fmt.Sprintf("%d_%s", i, "elf-demo-copy.o"))
 		if err = e.Write(objectCopy, intOptions, strOptions); err != nil {
 			b.Fatal(err)
 		}
