@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
-// Copyright (c) 2018 Authors of Cilium
+// Copyright (c) 2018-2019 Authors of Cilium
 #include <linux/bpf.h>
 #include <string.h>
 
@@ -7,8 +7,8 @@
 #include "lib/utils.h"
 #include "lib/common.h"
 
-DEFINE_U32(FOO, 0xF0F0F0F0);
-DEFINE_U32(BAR, 0xCECECECE);
+//DEFINE_U32(FOO, 0xF0F0F0F0);
+//DEFINE_U32(BAR, 0xCECECECE);
 DEFINE_IPV6(GLOBAL_IPV6, 0x1, 0, 0x1, 0, 0, 0x1, 0, 0x1, 0x1, 0, 0x1, 0, 0, 0x1, 0, 0x1);
 
 DEFINE_U32(LXC_ID, 0xFEFEFEFE);
@@ -33,15 +33,19 @@ __section_tail(CALLS_MAP_ID, 0) int tail_lxc_prog(struct __sk_buff *skb) {
 int __main(struct __sk_buff *skb)
 {
 	union v6addr v6 = {};
+	uint32_t foo, bar;
 
-	skb->mark = fetch_u32(FOO);
-	skb->cb[0] = fetch_u32(BAR);
+	LOAD_U32(foo);
+	skb->mark = foo;
+	LOAD_U32(bar);
+	skb->cb[0] = bar;
 
-	BPF_V6(v6, GLOBAL_IPV6);
-	skb->cb[1] = v6.p1;
-	skb->cb[2] = v6.p2;
-	skb->cb[3] = v6.p3;
-	skb->cb[4] = v6.p4;
+	//BPF_V6(v6, GLOBAL_IPV6);
+	//L
+	//skb->cb[1] = v6.p1;
+	//skb->cb[2] = v6.p2;
+	//skb->cb[3] = v6.p3;
+	//skb->cb[4] = v6.p4;
 
 	tail_call(skb, &CALLS_MAP, CALLS_MAP_ID);
 	return TC_ACT_OK;

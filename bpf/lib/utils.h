@@ -109,4 +109,13 @@ DEFINE_U32_I(NAME, 2) = bpf_htonl( (a5) << 24 |  (a6) << 16 |  (a7) << 8 |  (a8)
 DEFINE_U32_I(NAME, 3) = bpf_htonl( (a9) << 24 | (a10) << 16 | (a11) << 8 | (a12));			\
 DEFINE_U32_I(NAME, 4) = bpf_htonl((a13) << 24 | (a14) << 16 | (a15) << 8 | (a16))
 
+#define LOAD_CONSTANT(param, var) asm("%0 = " param " ll" : "=r"(var))
+#define LOAD_U32(var) LOAD_CONSTANT(#var, var)
+#define LOAD_U32_I(var, i) LOAD_CONSTANT(var ## i, var)
+#define LOAD_IPV6(var)		\
+	LOAD_U32_I(var, 1);	\
+	LOAD_U32_I(var, 2);	\
+	LOAD_U32_I(var, 3);	\
+	LOAD_U32_I(var, 4)
+
 #endif

@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -120,7 +121,7 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 		},
 		{
 			description:  "test constant substitution 1",
-			key:          "FOO",
+			key:          "foo",
 			kind:         symbolUint32,
 			intValue:     42,
 			elfValid:     validOptions,
@@ -128,12 +129,14 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 		},
 		{
 			description:  "test constant substitution 2",
-			key:          "BAR",
+			key:          "bar",
 			kind:         symbolUint32,
 			intValue:     42,
 			elfValid:     validOptions,
 			elfChangeErr: errDifferentFiles,
 		},
+		// TODO: IPV6 address substitution
+		// TODO: MAC address substitution
 		{
 			description:  "test map name substitution name",
 			key:          "test_cilium_calls_4278124286",
@@ -191,6 +194,11 @@ func (s *ELFTestSuite) TestWrite(c *C) {
 		}
 		modifiedElf.Close()
 	}
+
+	c.Logf("Temp dir = %s", tmpDir)
+	pid := syscall.Getpid()
+	c.Logf("Pausing test for debug, run \"kill -SIGCONT %d\" to continue.", pid)
+	syscall.Kill(pid, syscall.SIGSTOP)
 }
 
 // BenchmarkWriteELF benchmarks writing a very simple elf demo program.
