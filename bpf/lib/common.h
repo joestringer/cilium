@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2016-2018 Authors of Cilium
+ *  Copyright (C) 2016-2019 Authors of Cilium
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -270,6 +270,8 @@ enum {
 #define DROP_UNSUPPORTED_L2		-166
 #define DROP_NAT_NO_MAPPING	-167
 #define DROP_NAT_UNSUPP_PROTO	-168
+#define DROP_PROXY_LOOKUP_FAILED	-169
+#define DROP_PROXY_SET_FAILED	-170
 
 /* Cilium metrics reason for forwarding packet.
  * If reason > 0 then this is a drop reason and value corresponds to -(DROP_*)

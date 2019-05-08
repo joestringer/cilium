@@ -60,6 +60,8 @@ var errors = map[uint8]string{
 	166: "Unsupported L2 protocol",
 	167: "No mapping for NAT masquerade",
 	168: "Unsupported protocol for NAT masquerade",
+	169: "Socket lookup failed",
+	170: "Socket assign failed",
 }
 
 // DropReason prints the drop reason in a human readable string

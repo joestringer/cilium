@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2016-2017 Authors of Cilium
+ *  Copyright (C) 2016-2019 Authors of Cilium
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ enum {
 	DBG_ICMP6_TIME_EXCEEDED,
 	DBG_CT_VERDICT,
 	DBG_DECAP,
-	DBG_PORT_MAP,
+	DBG_PORT_MAP,		/* unused */
 	DBG_ERROR_RET,
 	DBG_TO_HOST,
 	DBG_TO_STACK,
@@ -66,8 +66,8 @@ enum {
 	DBG_REV_PROXY_FOUND,
 	DBG_REV_PROXY_UPDATE,
 	DBG_L4_POLICY,
-	DBG_NETDEV_IN_CLUSTER, /* arg1: security-context, arg2: unused */
-	DBG_NETDEV_ENCAP4, /* arg1 encap lookup key, arg2: identity */
+	DBG_NETDEV_IN_CLUSTER,	/* unused */
+	DBG_NETDEV_ENCAP4,	/* arg1 encap lookup key, arg2: identity */
 	DBG_CT_LOOKUP4_1,       /* arg1: saddr
 				 * arg2: daddr
 				 * arg3: (sport << 16) | dport
@@ -79,7 +79,7 @@ enum {
 	DBG_CT_CREATED4,        /* arg1: (unused << 16) | rev_nat_index
 				 * arg2: src sec-id
 				 * arg3: lb address
-				 */ 
+				 */
 	DBG_CT_LOOKUP6_1,       /* arg1: saddr (last 4 bytes)
 				 * arg2: daddr (last 4 bytes)
 				 * arg3: (sport << 16) | dport
@@ -111,6 +111,11 @@ enum {
 	DBG_IP_ID_MAP_SUCCEED6,	/* arg1: daddr (last 4 bytes)
 				 * arg2: identity
 				 * arg3: unused */
+	DBG_SK_LOOKUP4,		/* arg1: saddr
+				 * arg2: daddr
+				 * arg3: (dport << 16) | sport
+				 * NOTE: Ports are swapped wrt. CT_LOOKUP4_1.
+				 */
 };
 
 /* Capture types */

@@ -19,6 +19,7 @@
 #define __LIB_LXC_H_
 
 #include "common.h"
+#include "conntrack.h"
 #include "utils.h"
 #include "ipv6.h"
 #include "ipv4.h"
@@ -65,46 +66,71 @@ static inline int is_valid_lxc_src_ipv4(struct iphdr *ip4)
 }
 #endif
 
+#if defined(ENABLE_IPV4) || defined(ENABLE_IPV6)
 static inline int __inline__
 __skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u32 len, __u8 nexthdr)
 {
 	struct bpf_sock *sk = NULL;
-
-	// TODO: Return real error code here
-	int result = TC_ACT_SHOT;
+	int result = DROP_PROXY_LOOKUP_FAILED;
 
 	switch (nexthdr) {
 	case IPPROTO_TCP:
 		sk = sk_lookup_tcp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
+		break;
 	case IPPROTO_UDP:
 		sk = sk_lookup_udp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
-	default:
 		break;
 	}
-	if (sk) {
-		skb->mark = MARK_MAGIC_TO_PROXY;
-		skb_change_type(skb, PACKET_HOST); // Required ingress packets from overlay
-		result = skb_set_socket(skb, sk, BPF_F_TPROXY);
-		sk_release(sk);
+	if (!sk) {
+		// TODO: Return real error code here
+		goto out;
 	}
 
+	skb->mark = MARK_MAGIC_TO_PROXY;
+	skb_change_type(skb, PACKET_HOST); // Required ingress packets from overlay
+	result = skb_set_socket(skb, sk, BPF_F_TPROXY) == 0 ? TC_ACT_OK : DROP_PROXY_SET_FAILED;
+	sk_release(sk);
+out:
 	return result;
 }
 
+#ifdef ENABLE_IPV4
 static inline int __inline__
 skb_redirect_to_proxy4(struct __sk_buff *skb, struct ipv4_ct_tuple *tuple, __be16 proxy_port)
 {
 	struct bpf_sock_tuple *sk_tuple = (struct bpf_sock_tuple *)tuple;
 	int result;
+	__u16 port;
 
-	tuple->dport = proxy_port;
+	/* tuple's mismatched dport/sport strikes again! */
+	port = tuple->sport;
+	tuple->dport = tuple->sport;
+	tuple->sport = port;
+
+	/* Look for established socket locally first */
+	cilium_dbg3(skb, DBG_SK_LOOKUP4, sk_tuple->ipv4.saddr, sk_tuple->ipv4.daddr,
+		(bpf_ntohs(sk_tuple->ipv4.dport) << 16) | bpf_ntohs(sk_tuple->ipv4.sport));
 	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv4),
 					 tuple->nexthdr);
-	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
+	if (result == TC_ACT_OK) {
+		goto out;
+	}
 
+	/* If there's no established connection, locate the tproxy socket */
+	sk_tuple->ipv4.dport = proxy_port;
+	sk_tuple->ipv4.daddr = IPV4_GATEWAY;
+	cilium_dbg3(skb, DBG_SK_LOOKUP4, sk_tuple->ipv4.saddr, sk_tuple->ipv4.daddr,
+		(bpf_ntohs(sk_tuple->ipv4.dport) << 16) | bpf_ntohs(sk_tuple->ipv4.sport));
+	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv4),
+					 tuple->nexthdr);
+
+out:
+	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
 	return result;
 }
+#endif /* ENABLE_IPV4 */
 
+#ifdef ENABLE_IPV6
 static inline int __inline__
 skb_redirect_to_proxy6(struct __sk_buff *skb, struct ipv6_ct_tuple *tuple, __be16 proxy_port)
 {
@@ -112,12 +138,16 @@ skb_redirect_to_proxy6(struct __sk_buff *skb, struct ipv6_ct_tuple *tuple, __be1
 	int result;
 
 	tuple->dport = proxy_port;
+	// TODO: Fix up the tuple for proper lookup
+	//tuple->daddr = jk
 	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv6),
 					 tuple->nexthdr);
 	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
 
 	return result;
 }
+#endif /* ENABLE_IPV6 */
+#endif /* defined(ENABLE_IPV4) || defined(ENABLE_IPV6) */
 
 /**
  * tc_index_is_from_proxy - returns true if packet originates from ingress proxy
