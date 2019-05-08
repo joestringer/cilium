@@ -66,12 +66,57 @@ static inline int is_valid_lxc_src_ipv4(struct iphdr *ip4)
 #endif
 
 static inline int __inline__
-skb_redirect_to_proxy(struct __sk_buff *skb, __be16 proxy_port)
+__skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u32 len, __u8 nexthdr)
 {
-	skb->mark = MARK_MAGIC_TO_PROXY | proxy_port << 16;
+	struct bpf_sock *sk = NULL;
+
+	switch (nexthdr) {
+	case IPPROTO_TCP:
+		sk = sk_lookup_tcp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
+	case IPPROTO_UDP:
+		sk = sk_lookup_udp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
+	default:
+		break;
+	}
+	if (!sk) {
+		// TODO: Return real error code here
+		return TC_ACT_SHOT;
+	}
+
+	skb->mark = MARK_MAGIC_TO_PROXY;
 	skb_change_type(skb, PACKET_HOST); // Required ingress packets from overlay
-	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);	
+	skb_set_socket(skb, sk);
+	sk_release(sk);
+
 	return TC_ACT_OK;
+}
+
+static inline int __inline__
+skb_redirect_to_proxy4(struct __sk_buff *skb, struct ipv4_ct_tuple *tuple, __be16 proxy_port)
+{
+	struct bpf_sock_tuple *sk_tuple = (struct bpf_sock_tuple *)tuple;
+	int result;
+
+	tuple->dport = proxy_port;
+	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv4),
+					 tuple->nexthdr);
+	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
+
+	return result;
+}
+
+static inline int __inline__
+skb_redirect_to_proxy6(struct __sk_buff *skb, struct ipv6_ct_tuple *tuple, __be16 proxy_port)
+{
+	struct bpf_sock_tuple *sk_tuple = (struct bpf_sock_tuple *)tuple;
+	int result;
+
+	tuple->dport = proxy_port;
+	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv6),
+					 tuple->nexthdr);
+	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
+
+	return result;
 }
 
 /**

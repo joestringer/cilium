@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2016-2018 Authors of Cilium
+ *  Copyright (C) 2016-2019 Authors of Cilium
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -213,7 +213,7 @@ skip_service_lookup:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(skb, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, forwarding_reason, monitor);
-		return skb_redirect_to_proxy(skb, verdict);
+		return skb_redirect_to_proxy6(skb, tuple, verdict);
 	}
 
 	if (!revalidate_data(skb, &data, &data_end, &ip6))
@@ -507,7 +507,7 @@ skip_service_lookup:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(skb, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, forwarding_reason, monitor);
-		return skb_redirect_to_proxy(skb, verdict);
+		return skb_redirect_to_proxy4(skb, &tuple, verdict);
 	}
 
 	/* After L4 write in port mapping: revalidate for direct packet access */
@@ -787,7 +787,7 @@ ipv6_policy(struct __sk_buff *skb, int ifindex, __u32 src_label, int *forwarding
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(skb, TRACE_TO_PROXY, src_label, SECLABEL,
 				  0, ifindex, *forwarding_reason, monitor);
-		return skb_redirect_to_proxy(skb, verdict);
+		return skb_redirect_to_proxy6(skb, &tuple, verdict);
 	} else { // Not redirected to host / proxy.
 		send_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,
 				  LXC_ID, ifindex, *forwarding_reason, monitor);
@@ -922,7 +922,7 @@ ipv4_policy(struct __sk_buff *skb, int ifindex, __u32 src_label, int *forwarding
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(skb, TRACE_TO_PROXY, src_label, SECLABEL,
 				  0, ifindex, *forwarding_reason, monitor);
-		return skb_redirect_to_proxy(skb, verdict);
+		return skb_redirect_to_proxy4(skb, &tuple, verdict);
 	} else { // Not redirected to host / proxy.
 		send_trace_notify(skb, TRACE_TO_LXC, src_label, SECLABEL,
 				  LXC_ID, ifindex, *forwarding_reason, monitor);
