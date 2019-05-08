@@ -69,6 +69,7 @@ static inline int __inline__
 __skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u32 len, __u8 nexthdr)
 {
 	struct bpf_sock *sk = NULL;
+	int result = TC_ACT_SHOT;
 
 	switch (nexthdr) {
 	case IPPROTO_TCP:
@@ -80,15 +81,15 @@ __skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u
 	}
 	if (!sk) {
 		// TODO: Return real error code here
-		return TC_ACT_SHOT;
+		goto out;
 	}
 
 	skb->mark = MARK_MAGIC_TO_PROXY;
 	skb_change_type(skb, PACKET_HOST); // Required ingress packets from overlay
-	skb_set_socket(skb, sk);
+	result = skb_set_socket(skb, sk, BPF_F_TPROXY);
 	sk_release(sk);
-
-	return TC_ACT_OK;
+out:
+	return result;
 }
 
 static inline int __inline__
