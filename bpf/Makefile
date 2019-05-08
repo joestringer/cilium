@@ -41,11 +41,11 @@ LB_OPTIONS = \
 MAX_LB_OPTIONS = -DENABLE_IPV4 -DENABLE_IPV6 -DLB_L3 -DLB_L4
 
 bpf_lb.ll: bpf_lb.c $(LIB)
-	$(QUIET) set -e; \
-	$(foreach OPTS,$(LB_OPTIONS), \
-		$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
-		${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
-		${LLC} ${LLC_FLAGS} -o /dev/null $@; )
+	#$(QUIET) set -e; \
+	#$(foreach OPTS,$(LB_OPTIONS), \
+	#	$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
+	#	${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
+	#	${LLC} ${LLC_FLAGS} -o /dev/null $@; )
 	@$(ECHO_CC)
 	$(QUIET) ${CLANG} ${MAX_LB_OPTIONS} ${CLANG_FLAGS} -c $< -o $@
 
@@ -54,11 +54,11 @@ bpf_lb.o: bpf_lb.ll
 	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
 
 bpf_sock.ll: bpf_sock.c $(LIB)
-	$(QUIET) set -e; \
-	$(foreach OPTS,$(LB_OPTIONS), \
-		$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
-		${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
-		${LLC} ${LLC_FLAGS} -o /dev/null $@; )
+	#$(QUIET) set -e; \
+	#$(foreach OPTS,$(LB_OPTIONS), \
+	#	$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
+	#	${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
+	#	${LLC} ${LLC_FLAGS} -o /dev/null $@; )
 	@$(ECHO_CC)
 	$(QUIET) ${CLANG} ${MAX_LB_OPTIONS} ${CLANG_FLAGS} -c $< -o $@
 
@@ -87,11 +87,11 @@ LXC_OPTIONS = \
 MAX_LXC_OPTIONS = -DENABLE_IPV4 -DENABLE_IPV6
 
 bpf_lxc.ll: bpf_lxc.c $(LIB)
-	$(QUIET) set -e; \
-	$(foreach OPTS,$(LXC_OPTIONS), \
-		$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
-		${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
-		${LLC} ${LLC_FLAGS} -o /dev/null $@; )
+	#$(QUIET) set -e; \
+	#$(foreach OPTS,$(LXC_OPTIONS), \
+	#	$(ECHO_CC) " [$(subst :,$(space),$(OPTS))]"; \
+	#	${CLANG} $(subst :,$(space),$(OPTS)) ${CLANG_FLAGS} -c $< -o $@; \
+	#	${LLC} ${LLC_FLAGS} -o /dev/null $@; )
 	@$(ECHO_CC)
 	$(QUIET) ${CLANG} ${MAX_LXC_OPTIONS} ${CLANG_FLAGS} -c $< -o $@
 
