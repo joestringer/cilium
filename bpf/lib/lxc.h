@@ -75,7 +75,7 @@ __skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u
 
 	switch (nexthdr) {
 	case IPPROTO_TCP:
-		sk = sk_lookup_tcp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
+		sk = skc_lookup_tcp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
 		break;
 	case IPPROTO_UDP:
 		sk = sk_lookup_udp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
@@ -104,8 +104,8 @@ skb_redirect_to_proxy4(struct __sk_buff *skb, struct ipv4_ct_tuple *tuple, __be1
 
 	/* tuple's mismatched dport/sport strikes again! */
 	port = tuple->sport;
-	tuple->dport = tuple->sport;
-	tuple->sport = port;
+	tuple->sport = tuple->dport;
+	tuple->dport = port;
 
 	/* Look for established socket locally first */
 	cilium_dbg3(skb, DBG_SK_LOOKUP4, sk_tuple->ipv4.saddr, sk_tuple->ipv4.daddr,
@@ -118,7 +118,7 @@ skb_redirect_to_proxy4(struct __sk_buff *skb, struct ipv4_ct_tuple *tuple, __be1
 
 	/* If there's no established connection, locate the tproxy socket */
 	sk_tuple->ipv4.dport = proxy_port;
-	sk_tuple->ipv4.daddr = IPV4_GATEWAY;
+	sk_tuple->ipv4.daddr = 0;
 	cilium_dbg3(skb, DBG_SK_LOOKUP4, sk_tuple->ipv4.saddr, sk_tuple->ipv4.daddr,
 		(bpf_ntohs(sk_tuple->ipv4.dport) << 16) | bpf_ntohs(sk_tuple->ipv4.sport));
 	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv4),
@@ -136,14 +136,33 @@ skb_redirect_to_proxy6(struct __sk_buff *skb, struct ipv6_ct_tuple *tuple, __be1
 {
 	struct bpf_sock_tuple *sk_tuple = (struct bpf_sock_tuple *)tuple;
 	int result;
+	__u16 port;
 
-	tuple->dport = proxy_port;
-	// TODO: Fix up the tuple for proper lookup
-	//tuple->daddr = jk
+	/* tuple's mismatched dport/sport strikes again! */
+	port = tuple->sport;
+	tuple->sport = tuple->dport;
+	tuple->dport = port;
+
+	/* Look for established socket locally first */
+	//cilium_dbg3(skb, DBG_SK_LOOKUP6, sk_tuple->ipv4.saddr, sk_tuple->ipv4.daddr,
+	//	(bpf_ntohs(sk_tuple->ipv4.dport) << 16) | bpf_ntohs(sk_tuple->ipv4.sport));
 	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv6),
 					 tuple->nexthdr);
-	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
+	if (result == TC_ACT_OK) {
+		goto out;
+	}
 
+	/* If there's no established connection, locate the tproxy socket */
+	sk_tuple->ipv6.dport = proxy_port;
+	sk_tuple->ipv6.daddr[0] = 0;
+	sk_tuple->ipv6.daddr[1] = 0;
+	sk_tuple->ipv6.daddr[2] = 0;
+	sk_tuple->ipv6.daddr[3] = 0;
+	result = __skb_redirect_to_proxy(skb, sk_tuple, sizeof(sk_tuple->ipv6),
+					 tuple->nexthdr);
+
+out:
+	cilium_dbg_capture(skb, DBG_CAPTURE_PROXY_POST, proxy_port);
 	return result;
 }
 #endif /* ENABLE_IPV6 */
