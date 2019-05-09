@@ -77,15 +77,16 @@ __skb_redirect_to_proxy(struct __sk_buff *skb, struct bpf_sock_tuple *tuple, __u
 	case IPPROTO_TCP:
 		sk = skc_lookup_tcp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
 		break;
-	case IPPROTO_UDP:
-		sk = sk_lookup_udp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
-		break;
+	//case IPPROTO_UDP:
+	//	sk = sk_lookup_udp(skb, tuple, len, BPF_F_CURRENT_NETNS, 0);
+	//	break;
 	}
 	if (!sk) {
 		// TODO: Return real error code here
 		goto out;
 	}
 
+	cilium_dbg3(skb, DBG_SK_LOOKUP4, sk->src_ip4, 0, sk->src_port);
 	skb->mark = MARK_MAGIC_TO_PROXY;
 	skb_change_type(skb, PACKET_HOST); // Required ingress packets from overlay
 	result = skb_set_socket(skb, sk, BPF_F_TPROXY) == 0 ? TC_ACT_OK : DROP_PROXY_SET_FAILED;
