@@ -203,7 +203,7 @@ static int BPF_FUNC(sock_hash_update, struct bpf_sock_ops *skops, void *map, voi
 static int BPF_FUNC(msg_redirect_hash, struct sk_msg_md *md, void *map, void *key, uint64_t flags);
 
 /* Socket lookup, assign, release */
-static struct bpf_sock *BPF_FUNC(sk_lookup_tcp, struct __sk_buff *skb, struct bpf_sock_tuple *tuple, uint32_t tuple_size, uint64_t netns, uint64_t flags);
+static struct bpf_sock *BPF_FUNC(skc_lookup_tcp, struct __sk_buff *skb, struct bpf_sock_tuple *tuple, uint32_t tuple_size, uint64_t netns, uint64_t flags);
 static struct bpf_sock *BPF_FUNC(sk_lookup_udp, struct __sk_buff *skb, struct bpf_sock_tuple *tuple, uint32_t tuple_size, uint64_t netns, uint64_t flags);
 static int BPF_FUNC(sk_release, struct bpf_sock *sk);
 static int BPF_FUNC(skb_set_socket, struct __sk_buff *skb, struct bpf_sock *sk, uint64_t flags);
