@@ -208,6 +208,9 @@ var _ = Describe("K8sDatapathConfig", func() {
 	})
 
 	Context("ManagedEtcd", func() {
+		AfterEach(func() {
+			deleteETCDOperator(kubectl)
+		})
 		It("Check connectivity with managed etcd", func() {
 			deployCilium([]string{
 				"--set global.etcd.enabled=true",
