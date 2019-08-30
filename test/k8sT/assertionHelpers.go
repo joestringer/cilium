@@ -28,7 +28,8 @@ import (
 var (
 	longTimeout = 10 * time.Minute
 
-	flannelDSPath = helpers.GetFilePath("../examples/kubernetes/addons/flannel/flannel.yaml")
+	flannelChainingPath = helpers.GetFilePath("../examples/kubernetes/chaining/flannel.yaml")
+	flannelDSPath       = helpers.GetFilePath("../examples/kubernetes/addons/flannel/flannel.yaml")
 )
 
 // ExpectKubeDNSReady is a wrapper around helpers/WaitKubeDNS. It asserts that
@@ -120,6 +121,13 @@ func DeployCiliumAndDNS(vm *helpers.Kubectl) {
 
 // DeployCiliumOptionsAndDNS deploys DNS and cilium with options into the kubernetes cluster
 func DeployCiliumOptionsAndDNS(vm *helpers.Kubectl, options []string) {
+	switch helpers.GetCurrentIntegration() {
+	case helpers.CIIntegrationFlannel:
+		By("Configuring chaining")
+		vm.Apply(flannelChainingPath)
+	default:
+	}
+
 	By("Installing Cilium")
 	err := vm.CiliumInstall(options)
 	Expect(err).To(BeNil(), "Cilium cannot be installed")

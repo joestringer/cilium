@@ -82,9 +82,10 @@ var (
 	}
 
 	flannelHelmOverrides = map[string]string{
-		"global.flannel.enabled": "true",
-		"global.ipv6.enabled":    "false",
-		"global.tunnel":          "disabled",
+		"global.cni.customConf": "true",
+		"global.cni.configMap":  "cni-configuration",
+		"global.ipv6.enabled":   "false",
+		"global.tunnel":         "disabled",
 	}
 
 	cniIntegrationOverride string
