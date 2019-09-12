@@ -38,6 +38,7 @@ import (
 	"github.com/cilium/cilium/pkg/node"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy"
+	"github.com/cilium/cilium/pkg/policy/trafficdirection"
 	"github.com/cilium/cilium/pkg/revert"
 
 	"github.com/sirupsen/logrus"
@@ -58,6 +59,26 @@ func (e *Endpoint) LookupRedirectPort(l4Filter *policy.L4Filter) uint16 {
 	}
 	proxyID := e.ProxyID(l4Filter)
 	return e.realizedRedirects[proxyID]
+}
+
+// FetchVisibilityPolicy returns the visibility policy for the endpoint which
+// the core policy distill code can use to fold into the enforcement policy,
+// adding BPF redirects and L7 allow policies necessary for L7 visibility.
+// TODO: Apparently we don't need to plumb down L7 allow because we always do
+//       this anyway so that part is super simple? :D
+//
+// TODO: Check the safety of accessing the below
+// Access safety is provided by the fact that this is invoked via a call from
+// endpoint -> policy -> here, which will be bound in the endpoint policy
+// calculation logic using the endpoint lock.
+func (e *Endpoint) FetchVisibilityPolicy(direction trafficdirection.TrafficDirection) policy.L4PolicyMap {
+	return e.visibilityPolicy.GetDirectionalPolicy(direction)
+}
+
+// AddL7Visibility should be replaced with the hook into the annotations system
+// that provides the context about intended L7 visibility flow specifications.
+func (e *Endpoint) AddL7Visibility(l4 *policy.L4Filter) {
+	e.visibilityPolicy.AddRedirect(l4)
 }
 
 // Note that this function assumes that endpoint policy has already been generated!

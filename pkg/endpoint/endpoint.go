@@ -267,8 +267,16 @@ type Endpoint struct {
 	// for all endpoints that have the same Identity.
 	selectorPolicy policy.SelectorPolicy
 
-	desiredPolicy *policy.EndpointPolicy
+	// visibilityPolicy contains the visibility overrides for introspection
+	// into L7 traffic to or from this endpoint.
+	visibilityPolicy policy.VisibilityPolicy
 
+	// desiredPolicy and realizedPolicy are distilled from the
+	// selectorPolicy and the visibilityPolicy into the BPF map entries
+	// that should be (and are) plumbed into the endpoint's datapath maps,
+	// as well as the L7 redirects and rules that should be (and are)
+	// plumbed into the proxy implementations.
+	desiredPolicy  *policy.EndpointPolicy
 	realizedPolicy *policy.EndpointPolicy
 
 	eventQueue *eventqueue.EventQueue

@@ -35,6 +35,16 @@ var (
 // MapState is a state of a policy map.
 type MapState map[Key]MapStateEntry
 
+// AllowsAll returns true if the map contains an 'allow all' entry for the
+// specified traffic direction.
+func (m MapState) AllowsAll(dir trafficdirection.TrafficDirection) bool {
+	allowAllKey := Key{
+		TrafficDirection: dir.Uint8(),
+	}
+	_, exists := m[allowAllKey]
+	return exists
+}
+
 // Key is the userspace representation of a policy key in BPF. It is
 // intentionally duplicated from pkg/maps/policymap to avoid pulling in the
 // BPF dependency to this package.

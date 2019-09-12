@@ -76,6 +76,7 @@ type EndpointPolicy struct {
 // PolicyOwner is anything which consumes a EndpointPolicy.
 type PolicyOwner interface {
 	LookupRedirectPort(l4 *L4Filter) uint16
+	FetchVisibilityPolicy(trafficdirection.TrafficDirection) L4PolicyMap
 }
 
 // newSelectorPolicy returns an empty selectorPolicy stub.
@@ -153,6 +154,7 @@ func (p *EndpointPolicy) computeDesiredL4PolicyMapEntries() {
 }
 
 func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(l4PolicyMap L4PolicyMap, direction trafficdirection.TrafficDirection) {
+	// Derive map entries from the selector policy
 	for _, filter := range l4PolicyMap {
 		keysFromFilter := filter.ToKeys(direction)
 		for _, keyFromFilter := range keysFromFilter {
@@ -172,6 +174,58 @@ func (p *EndpointPolicy) computeDirectionL4PolicyMapEntries(l4PolicyMap L4Policy
 			p.PolicyMapState[keyFromFilter] = MapStateEntry{ProxyPort: proxyPort}
 		}
 	}
+
+	// Derive L7 visibility overrides from the PolicyOwner
+	//vp := p.PolicyOwner.FetchVisibilityPolicy(direction)
+	//allowAll := p.PolicyMapState.AllowsAll(direction)
+	//for _, filter := range vp {
+	//	for _, k := range filter.ToKeys(direction) {
+	// TODO: Check that the traffic is already allowed
+	// TODO: If allowed, lookup redirect and insert
+
+	// TODO: It's likely that the specified 'filter' is
+	//       not l3-dependent, but it could be applied to
+	//       an endpoint with l3-dependent policy, in which
+	//       case we should:
+	//       - Check for L4 policy. We can just introspect
+	//         into the 'p.selectorPolicy' using the same
+	//         "port/protocol" that identifies 'filter'.
+	//         + If there's already L7-only policy, continue 'vp'.
+	//         + If there's L4-only policy, get a port and
+	//           stuff it in there. Presumably means
+	//           deleting the existing map key in
+	//           'p.PolicyMapState' and inserting an L7 one.
+	//           ADDENDUM: This shouldn't be overridden by
+	//                     incremental policy calculation..
+	//         + If the L4 policy is l3-dependent, we need
+	//           to do something similar to the above two
+	//           steps, except considering each l3 peer.
+	//       - Check for L3-only policy. Can be done via
+	//         the "0/0" port/proto filter in 'p.selectorPolicy's
+	//         L4PolicyMap.
+	//         + If wildcards L3, easy, just inject the L7
+	//           policymap entries.
+	//         + Otherwise iterate each L3 peer that's
+	//           allowed and generate the entry for that.
+	//
+	//       May also want to consider whether saving the
+	//       results / changes from the above is useful for
+	//       later; either in the following L7 rule gen
+	//       piece, or potentially even later again if we
+	//       want to cache and/or rely upon this for
+	//       incremental policy calc.
+	//	}
+	//}
+
+	// TODO: Apparently we shouldn't need to generate L7 policy because
+	//       the proxy is automatically allow-all unless an l7 policy is
+	//       configured, in which case we will rely on that enforcement
+	//       policy to perform the right L7 forwarding. Either way,
+	//       directing traffic to the proxy will have the effect of
+	//       providing visibility and will follow the enforcement policy.
+	//
+	//       Just need to validate that we didn't miss anything with the
+	//       above; hopefully it's a no-op.
 }
 
 // NewEndpointPolicy returns an empty EndpointPolicy stub.

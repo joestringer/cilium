@@ -173,6 +173,10 @@ func (d DummyOwner) LookupRedirectPort(l4 *L4Filter) uint16 {
 	return 0
 }
 
+func (d DummyOwner) FetchVisibilityPolicy(dir trafficdirection.TrafficDirection) L4PolicyMap {
+	return nil
+}
+
 func bootstrapRepo(ruleGenFunc func(int) api.Rules, numRules int, c *C) *Repository {
 	testRepo := NewPolicyRepository()
 

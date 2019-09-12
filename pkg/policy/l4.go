@@ -527,6 +527,37 @@ func (l4 L4PolicyMap) containsAllL3L4(labels labels.LabelArray, ports []*models.
 	return api.Allowed
 }
 
+// VisibilityPolicy is a simplified policy structure for potential endpoint
+// specific policy overrides to plumb L7 redirects into the datapath.
+//
+// TODO: Evaluate whether L4PolicyMap is overkill for the information we need
+//       to store here.
+type VisibilityPolicy struct {
+	Ingress L4PolicyMap
+	Egress  L4PolicyMap
+}
+
+// GetDirectionalPolicy gets the L4PolicyMap for the specified direction from
+// the visibilityPolicy.
+func (v *VisibilityPolicy) GetDirectionalPolicy(dir trafficdirection.TrafficDirection) L4PolicyMap {
+	if dir == trafficdirection.Ingress {
+		return v.Ingress
+	} else {
+		return v.Egress
+	}
+}
+
+// AddRedirect injects an L7 allow and redirect policy into the visibilityPolicy.
+// This will redirect all traffic that matches the specified L4 traffic,
+// regardless of L3 peer.
+//
+// TODO: Subscribe to cachedSelectors
+// TODO: Generate the L7RulesPerEp
+// TODO: Consider passing more granular arguments, direction, error return, etc.
+// TODO: How to remove?
+func (v *VisibilityPolicy) AddRedirect(l4 *L4Filter) {
+}
+
 type L4Policy struct {
 	Ingress L4PolicyMap
 	Egress  L4PolicyMap
