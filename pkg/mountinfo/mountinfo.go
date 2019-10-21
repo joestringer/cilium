@@ -1,4 +1,4 @@
-// Copyright 2018 Authors of Cilium
+// Copyright 2018-2019 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 const (
 	// FilesystemType names for filesystem which are used in /proc/pid/mountinfo
 	FilesystemTypeBPFFS   = "bpf"
+	FilesystemTypeCgroup1 = "cgroup"
 	FilesystemTypeCgroup2 = "cgroup2"
 
 	mountInfoFilepath = "/proc/self/mountinfo"
