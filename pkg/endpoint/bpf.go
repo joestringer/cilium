@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/common"
 	"github.com/cilium/cilium/pkg/bpf"
+	"github.com/cilium/cilium/pkg/cgroups"
 	"github.com/cilium/cilium/pkg/completion"
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/endpoint/regeneration"
@@ -702,6 +703,11 @@ func (e *Endpoint) runPreCompilationSteps(regenContext *regenerationContext) (pr
 
 		log.WithField(logfields.EndpointID, e.ID).Debug("Skipping bpf updates due to dry mode")
 		return nil
+	}
+
+	// TODO: Wrap in cgroup enforcement enable flag
+	if err = cgroups.ConfigureEndpoint(e); err != nil {
+		return err
 	}
 
 	if e.policyMap == nil {

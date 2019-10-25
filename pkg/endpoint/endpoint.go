@@ -334,9 +334,9 @@ func (e *Endpoint) Cgroup() string {
 // it cannot apply the corresponding datapath changes. To apply these changes,
 // regeneration is required.
 func (e *Endpoint) SetCgroup(cgroup string) {
-	e.Lock()
+	e.mutex.Lock()
 	e.cgroup = cgroup
-	e.Unlock()
+	e.mutex.Unlock()
 }
 
 // closeBPFProgramChannel closes the channel that signals whether the endpoint
