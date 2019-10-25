@@ -246,6 +246,7 @@ func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.Endpoint
 			addLabels.MergeLabels(identityLabels)
 			infoLabels.MergeLabels(info)
 			ep.UpdateVisibilityPolicy(meta.Annotations[annotation.ProxyVisibility])
+			ep.SetCgroup(meta.Cgroup)
 		}
 	}
 
