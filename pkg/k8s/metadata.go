@@ -15,7 +15,9 @@
 package k8s
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/cilium/cilium/pkg/endpoint/types"
 	k8sConst "github.com/cilium/cilium/pkg/k8s/apis/cilium.io"
@@ -46,6 +48,9 @@ const (
 	// DefaultSidecarIstioProxyImageRegexp is the default regexp compiled into
 	// SidecarIstioProxyImageRegexp.
 	DefaultSidecarIstioProxyImageRegexp = "cilium/istio_proxy"
+
+	// PodCgroupRoot is the root cgroup used for kubernetes pods.
+	PodCgroupRoot = "kubepods"
 )
 
 var (
@@ -95,6 +100,11 @@ func isInjectedWithIstioSidecarProxy(scopedLog *logrus.Entry, pod *types.Pod) bo
 	return false
 }
 
+func podSpecToCgroup(pod *corev1.Pod) string {
+	class := strings.ToLower(string(pod.Status.QOSClass))
+	return fmt.Sprintf("/%s/%s/pod%s", PodCgroupRoot, class, pod.UID)
+}
+
 // GetPodMetadata returns the labels and annotations of the pod with the given
 // namespace / name.
 func GetPodMetadata(k8sNs *types.Namespace, pod *types.Pod) (metadata *endpoint.Metadata, retErr error) {
@@ -136,5 +146,6 @@ func GetPodMetadata(k8sNs *types.Namespace, pod *types.Pod) (metadata *endpoint.
 		Labels:      labels.Map2Labels(k8sLabels, labels.LabelSourceK8s),
 		InfoLabels:  labels.FilterLabels(k8sLbls)
 		Annotations: annotations,
+		Cgroup:      podSpecToCgroup(result),
 	}, nil
 }

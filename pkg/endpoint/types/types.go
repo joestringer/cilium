@@ -21,6 +21,7 @@ import (
 // Metadata is the collection of endpoint information used for Cilium endpoint
 // creation and management.
 type Metadata struct {
+	Cgroup      string
 	Labels      labels.Labels
 	InfoLabels  labels.Labels
 	Annotations map[string]string
