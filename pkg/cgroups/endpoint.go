@@ -33,6 +33,8 @@ import (
 var (
 	// https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html#core-interface-files
 	procsBaseName = "cgroup.procs"
+
+	datapathClsPrefix = uint32(0xC1110000)
 )
 
 // EndpointCgroup is the representation of a Cgroup corresponding to a Cilium
@@ -176,4 +178,43 @@ func sanitizeEndpointPath(cgPath, containerID string) string {
 		return cgPath
 	}
 	return path.Join(cgPath, containerID)
+}
+
+// perEndpointIDExists returns true if the cgroup v2 id appears to be available
+// for use in the datapath. If not available, we assume that cgroup v1 net_cls
+// controller is available for each endpoint.
+func perEndpointIDExists() bool {
+	path := fmt.Sprintf("/%s/kubepods", GetCgroupRoot())
+	if _, err := os.Stat(path); err != nil {
+		log.WithError(err).WithFields(logrus.Fields{
+			logfields.Path: path,
+		}).Debugf("Cgroup v2 per pod not found")
+		return false
+	}
+	return true
+}
+
+type endpoint interface {
+	Cgroup() string
+	GetID16() uint16
+}
+
+func ConfigureEndpoint(ep endpoint) error {
+	scopedLog := log.WithFields(logrus.Fields{
+		logfields.EndpointID: ep.GetID16(),
+	})
+	if perEndpointIDExists() {
+		scopedLog.Debug("Skipping configuration of endpoint classid")
+		return nil
+	}
+
+	classID := fmt.Sprintf("%#08x", datapathClsPrefix|uint32(ep.GetID16()))
+	scopedLog.WithField("net_cls.classid", classID).Debug("Configuring cgroup")
+	for _, mount := range getCgroupNetMounts() {
+		fullPath := path.Join(mount, ep.Cgroup(), "net_cls.classid")
+		if err := ioutil.WriteFile(fullPath, []byte(classID), 0755); err != nil {
+			return err
+		}
+	}
+	return nil
 }
