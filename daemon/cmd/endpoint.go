@@ -147,26 +147,19 @@ func NewPutEndpointIDHandler(d *Daemon) PutEndpointIDHandler {
 	return &putEndpointID{d: d}
 }
 
-// fetchK8sLabelsAndAnnotations wraps the k8s package to fetch and provide
+// fetchK8sMetadata wraps the k8s package to fetch and provide
 // endpoint metadata. It implements endpoint.MetadataResolverCB.
-func (d *Daemon) fetchK8sLabelsAndAnnotations(nsName, podName string) (labels.Labels, labels.Labels, map[string]string, error) {
+func (d *Daemon) fetchK8sMetadata(nsName, podName string) (endpoint.Metadata, error) {
 	p, err := d.k8sWatcher.GetCachedPod(nsName, podName)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 	ns, err := d.k8sWatcher.GetCachedNamespace(nsName)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
-	lbls, annotations, err := k8s.GetPodMetadata(ns, p)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	k8sLbls := labels.Map2Labels(lbls, labels.LabelSourceK8s)
-	identityLabels, infoLabels := labels.FilterLabels(k8sLbls)
-	return identityLabels, infoLabels, annotations, nil
+	return k8s.GetPodMetadata(ns, p)
 }
 
 func invalidDataError(ep *endpoint.Endpoint, err error) (*endpoint.Endpoint, int, error) {
@@ -260,10 +253,11 @@ func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.Endpoint
 	}
 
 	if ep.K8sNamespaceAndPodNameIsSet() && k8s.IsEnabled() {
-		identityLabels, info, _, err := d.fetchK8sLabelsAndAnnotations(ep.K8sNamespace, ep.K8sPodName)
+		meta, err := d.fetchK8sMetadata(ep.K8sNamespace, ep.K8sPodName)
 		if err != nil {
 			ep.Logger("api").WithError(err).Warning("Unable to fetch kubernetes labels")
 		} else {
+			identityLabels, info := labels.FilterLabels(meta.Labels)
 			addLabels.MergeLabels(identityLabels)
 			infoLabels.MergeLabels(info)
 		}

@@ -1,4 +1,4 @@
-// Copyright 2018 Authors of Cilium
+// Copyright 2018-2019 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package k8s
 import (
 	"regexp"
 
+	"github.com/cilium/cilium/pkg/endpoint/types"
 	k8sConst "github.com/cilium/cilium/pkg/k8s/apis/cilium.io"
 	"github.com/cilium/cilium/pkg/k8s/types"
+	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy"
@@ -95,7 +97,7 @@ func isInjectedWithIstioSidecarProxy(scopedLog *logrus.Entry, pod *types.Pod) bo
 
 // GetPodMetadata returns the labels and annotations of the pod with the given
 // namespace / name.
-func GetPodMetadata(k8sNs *types.Namespace, pod *types.Pod) (lbls map[string]string, retAnno map[string]string, retErr error) {
+func GetPodMetadata(k8sNs *types.Namespace, pod *types.Pod) (metadata *endpoint.Metadata, retErr error) {
 	namespace := pod.Namespace
 	scopedLog := log.WithFields(logrus.Fields{
 		logfields.K8sNamespace: namespace,
@@ -130,5 +132,9 @@ func GetPodMetadata(k8sNs *types.Namespace, pod *types.Pod) (lbls map[string]str
 
 	k8sLabels[k8sConst.PolicyLabelCluster] = option.Config.ClusterName
 
-	return k8sLabels, annotations, nil
+	return &endpoint.Metadata{
+		Labels:      labels.Map2Labels(k8sLabels, labels.LabelSourceK8s),
+		InfoLabels:  labels.FilterLabels(k8sLbls)
+		Annotations: annotations,
+	}, nil
 }

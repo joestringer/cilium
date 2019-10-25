@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/cilium/pkg/completion"
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/endpoint/regeneration"
+	"github.com/cilium/cilium/pkg/endpoint/types"
 	"github.com/cilium/cilium/pkg/eventqueue"
 	"github.com/cilium/cilium/pkg/fqdn"
 	"github.com/cilium/cilium/pkg/identity"
@@ -1467,7 +1468,7 @@ func APICanModify(e *Endpoint) error {
 
 // MetadataResolverCB provides an implementation for resolving the endpoint
 // metadata for an endpoint such as the associated labels and annotations.
-type MetadataResolverCB func(ns, podName string) (identityLabels labels.Labels, infoLabels labels.Labels, annotations map[string]string, err error)
+type MetadataResolverCB func(ns, podName string) (meta *endpoint.Metadata, err error)
 
 // RunMetadataResolver starts a controller associated with the received
 // endpoint which will periodically attempt to resolve the metadata for the
@@ -1489,19 +1490,19 @@ func (e *Endpoint) RunMetadataResolver(resolveMetadata MetadataResolverCB) {
 		controller.ControllerParams{
 			DoFunc: func(ctx context.Context) error {
 				ns, podName := e.GetK8sNamespace(), e.GetK8sPodName()
-				identityLabels, info, _, err := resolveMetadata(ns, podName)
+				meta, err := resolveMetadata(ns, podName)
 				if err != nil {
 					e.Logger(controllerName).WithError(err).Warning("Unable to fetch kubernetes labels")
 					return err
 				}
 				e.UpdateVisibilityPolicy(func(_, _ string) (proxyVisibility string, err error) {
-					_, _, annotations, err := resolveMetadata(ns, podName)
+					meta, err := resolveMetadata(ns, podName)
 					if err != nil {
 						return "", err
 					}
-					return annotations[annotation.ProxyVisibility], nil
+					return meta.Annotations[annotation.ProxyVisibility], nil
 				})
-				e.UpdateLabels(ctx, identityLabels, info, true)
+				e.UpdateLabels(ctx, meta.Labels, meta.InfoLabels, true)
 				close(done)
 				return nil
 			},
