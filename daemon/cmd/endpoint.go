@@ -260,6 +260,7 @@ func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.Endpoint
 			identityLabels, info := labels.FilterLabels(meta.Labels)
 			addLabels.MergeLabels(identityLabels)
 			infoLabels.MergeLabels(info)
+			ep.SetCgroup(meta.Cgroup)
 		}
 	}
 
