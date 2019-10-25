@@ -57,8 +57,7 @@ func getFilteredLabels(containerID string, allLabels map[string]string) (identit
 	if err != nil {
 		log.WithError(err).Warn("Error while getting Kubernetes labels")
 	} else if k8sNormalLabels != nil {
-		k8sLbls := labels.Map2Labels(k8sNormalLabels, labels.LabelSourceK8s)
-		combinedLabels.MergeLabels(k8sLbls)
+		combinedLabels.MergeLabels(k8sNormalLabels)
 	}
 
 	return labels.FilterLabels(combinedLabels)

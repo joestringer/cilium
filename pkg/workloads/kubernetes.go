@@ -1,4 +1,4 @@
-// Copyright 2018 Authors of Cilium
+// Copyright 2018-2019 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,13 @@ package workloads
 
 import (
 	"github.com/cilium/cilium/pkg/k8s"
+	"github.com/cilium/cilium/pkg/labels"
 
 	k8sDockerLbls "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 // fetchK8sLabels returns the kubernetes labels from the given container labels
-func fetchK8sLabels(containerID string, containerLbls map[string]string) (map[string]string, error) {
+func fetchK8sLabels(containerID string, containerLbls map[string]string) (labels.Labels, error) {
 	if !k8s.IsEnabled() {
 		return nil, nil
 	}
@@ -33,6 +34,6 @@ func fetchK8sLabels(containerID string, containerLbls map[string]string) (map[st
 	if ns == "" {
 		ns = "default"
 	}
-	lbls, _, err := k8s.GetPodMetadata(ns, podName)
-	return lbls, err
+	meta, err := k8s.GetPodMetadata(ns, podName)
+	return meta.Labels, err
 }

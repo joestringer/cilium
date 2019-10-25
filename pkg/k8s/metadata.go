@@ -1,4 +1,4 @@
-// Copyright 2018 Authors of Cilium
+// Copyright 2018-2019 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package k8s
 import (
 	"regexp"
 
+	"github.com/cilium/cilium/pkg/endpoint/types"
 	k8sConst "github.com/cilium/cilium/pkg/k8s/apis/cilium.io"
+	"github.com/cilium/cilium/pkg/labels"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/policy"
@@ -96,7 +98,7 @@ func isInjectedWithIstioSidecarProxy(scopedLog *logrus.Entry, pod *corev1.Pod) b
 
 // GetPodMetadata returns the labels and annotations of the pod with the given
 // namespace / name.
-func GetPodMetadata(namespace, podName string) (lbls map[string]string, retAnno map[string]string, retErr error) {
+func GetPodMetadata(namespace, podName string) (metadata *endpoint.Metadata, retErr error) {
 	scopedLog := log.WithFields(logrus.Fields{
 		logfields.K8sNamespace: namespace,
 		logfields.K8sPodName:   podName,
@@ -105,13 +107,13 @@ func GetPodMetadata(namespace, podName string) (lbls map[string]string, retAnno 
 
 	result, err := Client().CoreV1().Pods(namespace).Get(podName, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Also get all labels from the namespace where the pod is running
 	k8sNs, err := Client().CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	annotations := result.GetAnnotations()
@@ -141,5 +143,8 @@ func GetPodMetadata(namespace, podName string) (lbls map[string]string, retAnno 
 
 	k8sLabels[k8sConst.PolicyLabelCluster] = option.Config.ClusterName
 
-	return k8sLabels, annotations, nil
+	return &endpoint.Metadata{
+		Labels:      labels.Map2Labels(k8sLabels, labels.LabelSourceK8s),
+		Annotations: annotations,
+	}, nil
 }

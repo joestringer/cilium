@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/cilium/pkg/completion"
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/endpoint/regeneration"
+	"github.com/cilium/cilium/pkg/endpoint/types"
 	"github.com/cilium/cilium/pkg/eventqueue"
 	"github.com/cilium/cilium/pkg/fqdn"
 	"github.com/cilium/cilium/pkg/identity"
@@ -1482,7 +1483,7 @@ func (e *Endpoint) getIDandLabels() string {
 
 // MetadataResolverCB provides an implementation for resolving the endpoint
 // metadata for an endpoint such as the associated labels and annotations.
-type MetadataResolverCB func(*Endpoint) (identityLabels labels.Labels, infoLabels labels.Labels, annotations map[string]string, err error)
+type MetadataResolverCB func(namespace, podName string) (meta *endpoint.Metadata, err error)
 
 // RunMetadataResolver starts a controller associated with the received
 // endpoint which will periodically attempt to resolve the metadata for the
@@ -1503,12 +1504,13 @@ func (e *Endpoint) RunMetadataResolver(resolveMetadata MetadataResolverCB) {
 	e.controllers.UpdateController(controllerName,
 		controller.ControllerParams{
 			DoFunc: func(ctx context.Context) error {
-				identityLabels, info, annotations, err := resolveMetadata(e)
+				meta, err := resolveMetadata(e.GetK8sNamespace(), e.GetK8sPodName())
 				if err != nil {
 					e.Logger(controllerName).WithError(err).Warning("Unable to fetch kubernetes labels")
 					return err
 				}
-				e.UpdateVisibilityPolicy(annotations[annotation.ProxyVisibility])
+				identityLabels, info := labels.FilterLabels(meta.Labels)
+				e.UpdateVisibilityPolicy(meta.Annotations[annotation.ProxyVisibility])
 				e.UpdateLabels(ctx, identityLabels, info, true)
 				close(done)
 				return nil

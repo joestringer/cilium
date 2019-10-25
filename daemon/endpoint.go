@@ -147,19 +147,6 @@ func NewPutEndpointIDHandler(d *Daemon) PutEndpointIDHandler {
 	return &putEndpointID{d: d}
 }
 
-// fetchK8sLabelsAndAnnotations wraps the k8s package to fetch and provide
-// endpoint metadata. It implements endpoint.MetadataResolverCB.
-func fetchK8sLabelsAndAnnotations(ep *endpoint.Endpoint) (labels.Labels, labels.Labels, map[string]string, error) {
-	lbls, annotations, err := k8s.GetPodMetadata(ep.GetK8sNamespace(), ep.GetK8sPodName())
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	k8sLbls := labels.Map2Labels(lbls, labels.LabelSourceK8s)
-	identityLabels, infoLabels := labels.FilterLabels(k8sLbls)
-	return identityLabels, infoLabels, annotations, nil
-}
-
 func invalidDataError(ep *endpoint.Endpoint, err error) (*endpoint.Endpoint, int, error) {
 	ep.Logger(daemonSubsys).WithError(err).Warning("Creation of endpoint failed due to invalid data")
 	return nil, PutEndpointIDInvalidCode, err
@@ -251,13 +238,14 @@ func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.Endpoint
 	}
 
 	if ep.K8sNamespaceAndPodNameIsSet() && k8s.IsEnabled() {
-		identityLabels, info, annotations, err := fetchK8sLabelsAndAnnotations(ep)
+		meta, err := k8s.GetPodMetadata(ep.GetK8sNamespace(), ep.GetK8sPodName())
 		if err != nil {
 			ep.Logger("api").WithError(err).Warning("Unable to fetch kubernetes labels")
 		} else {
+			identityLabels, info := labels.FilterLabels(meta.Labels)
 			addLabels.MergeLabels(identityLabels)
 			infoLabels.MergeLabels(info)
-			ep.UpdateVisibilityPolicy(annotations[annotation.ProxyVisibility])
+			ep.UpdateVisibilityPolicy(meta.Annotations[annotation.ProxyVisibility])
 		}
 	}
 
@@ -278,7 +266,7 @@ func (d *Daemon) createEndpoint(ctx context.Context, epTemplate *models.Endpoint
 		// If there are labels, but no pod namespace, then it's
 		// likely that there are no k8s labels at all. Resolve.
 		if _, k8sLabelsConfigured := addLabels[k8sConst.PodNamespaceLabel]; !k8sLabelsConfigured {
-			ep.RunMetadataResolver(fetchK8sLabelsAndAnnotations)
+			ep.RunMetadataResolver(k8s.GetPodMetadata)
 		}
 	}
 
