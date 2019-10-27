@@ -39,7 +39,7 @@ var (
 	cgrpQueryOnce sync.Once
 
 	// cgroupNetMounts is a map from net_cls/net_prio mount to mount path
-	cgroupNetMounts map[string]string
+	cgroupNetMounts = make(map[string]string)
 )
 
 var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "cgroups")
@@ -125,8 +125,6 @@ func CheckOrMountCgrpFS(mapRoot string) {
 // net_prio -> /path/to/net_prio
 func getCgroupNetMounts() map[string]string {
 	cgrpQueryOnce.Do(func() {
-		cgroupNetMounts := make(map[string]string)
-
 		mounts, err := mountinfo.GetMountInfo()
 		if err != nil {
 			log.WithError(err).Warningf("Unable to detect cgroup filesystem mounts")
