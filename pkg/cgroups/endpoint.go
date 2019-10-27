@@ -207,12 +207,19 @@ type endpoint interface {
 	GetID16() uint16
 }
 
+// ConfigureEndpoint sets up the endpoint's cgroup to allow security
+// enforcement via the endpoint's cgroup (cgroup2 or cgroup1 classid).
+//
+// TODO: Mount the host /sys/fs/cgroup into the cilium container
 func ConfigureEndpoint(ep endpoint) error {
 	scopedLog := log.WithFields(logrus.Fields{
 		logfields.EndpointID: ep.GetID16(),
 	})
 	if perEndpointIDExists() {
 		scopedLog.Debug("Skipping configuration of endpoint classid")
+		return nil
+	} else if ep.Cgroup() == "" {
+		scopedLog.Warning("Cannot configure endpoint cgroup: cgroup unknown")
 		return nil
 	}
 
@@ -224,7 +231,18 @@ func ConfigureEndpoint(ep endpoint) error {
 			logfields.Path: fullPath,
 		}).Debug("Configuring cgroup")
 		if err := ioutil.WriteFile(fullPath, []byte(classID), 0755); err != nil {
+			scopedLog.WithError(err).Debug("Failed to configure cgroup")
 			return err
+		}
+		content, err := ioutil.ReadFile(fullPath)
+		if err == nil {
+			scopedLog.WithFields(logrus.Fields{
+				"content": string(content),
+			}).Debug("Configured cgroup")
+		} else {
+			scopedLog.WithFields(logrus.Fields{
+				"content": string(content),
+			}).WithError(err).Debug("Could not validate cgroup configuration")
 		}
 	}
 	return nil
