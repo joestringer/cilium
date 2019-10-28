@@ -202,35 +202,56 @@ func perEndpointIDExists() bool {
 	return cgroupV2PerEndpoint
 }
 
-type endpoint interface {
+// Endpoint represents an endpoint for the purposes for cgroups configuration.
+type Endpoint interface {
 	Cgroup() string
-	GetID16() uint16
+	GetID() uint64
+}
+
+func getBPFKey(ep Endpoint) (uint64, error) {
+	if perEndpointIDExists() {
+		// TODO: Cgroupv2
+		return 0, nil
+	} else if ep.Cgroup() == "" {
+		return 0, fmt.Errorf("endpoint cgroup not configured")
+	}
+	return uint64(datapathClsPrefix) | ep.GetID(), nil
+}
+
+// GetBPFKey converts an endpoint into a cgroup key.
+//
+// For now, this only supports cgroup v1 via classid.
+// TODO: Return pointer?
+func GetBPFKey(ep Endpoint) (uint64, error) {
+	return getBPFKey(ep)
 }
 
 // ConfigureEndpoint sets up the endpoint's cgroup to allow security
 // enforcement via the endpoint's cgroup (cgroup2 or cgroup1 classid).
 //
 // TODO: Mount the host /sys/fs/cgroup into the cilium container
-func ConfigureEndpoint(ep endpoint) error {
+func ConfigureEndpoint(ep Endpoint) error {
 	scopedLog := log.WithFields(logrus.Fields{
-		logfields.EndpointID: ep.GetID16(),
+		logfields.EndpointID: ep.GetID(),
 	})
-	if perEndpointIDExists() {
-		scopedLog.Debug("Skipping configuration of endpoint classid")
+
+	classID, err := getBPFKey(ep)
+	if err != nil {
+		scopedLog.WithError(err).Warning("Cannot configure endpoint cgroup")
 		return nil
-	} else if ep.Cgroup() == "" {
-		scopedLog.Warning("Cannot configure endpoint cgroup: cgroup unknown")
+	} else if classID == 0 {
+		scopedLog.Debug("Skipping configuration of endpoint classid")
 		return nil
 	}
 
-	classID := fmt.Sprintf("%#08x", datapathClsPrefix|uint32(ep.GetID16()))
+	class := fmt.Sprintf("%#08x", classID)
 	for _, mount := range getCgroupNetMounts() {
 		fullPath := path.Join(mount, ep.Cgroup(), "net_cls.classid")
 		scopedLog.WithFields(logrus.Fields{
-			"classid":      classID,
+			"classid":      class,
 			logfields.Path: fullPath,
 		}).Debug("Configuring cgroup")
-		if err := ioutil.WriteFile(fullPath, []byte(classID), 0755); err != nil {
+		if err := ioutil.WriteFile(fullPath, []byte(class), 0755); err != nil {
 			scopedLog.WithError(err).Debug("Failed to configure cgroup")
 			return err
 		}
