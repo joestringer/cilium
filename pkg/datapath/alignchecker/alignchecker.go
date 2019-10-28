@@ -74,7 +74,7 @@ func CheckStructAlignments(path string) error {
 		// "ipv6_nat_entry":    {reflect.TypeOf(nat.NatEntry6{})},
 		"endpoint_key": {
 			reflect.TypeOf(bpf.EndpointKey{}),
-			reflect.TypeOf(eppolicymap.EndpointKey{}),
+			reflect.TypeOf(eppolicymap.CgroupKey{}),
 			reflect.TypeOf(tunnel.TunnelEndpoint{}),
 		},
 	}

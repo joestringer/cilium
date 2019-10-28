@@ -20,9 +20,9 @@ import (
 	"unsafe"
 
 	"github.com/cilium/cilium/pkg/bpf"
+	"github.com/cilium/cilium/pkg/cgroups"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
-	"github.com/cilium/cilium/pkg/maps/lxcmap"
 	"github.com/cilium/cilium/pkg/maps/policymap"
 	"github.com/cilium/cilium/pkg/option"
 )
@@ -40,7 +40,9 @@ const (
 
 // +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=github.com/cilium/cilium/pkg/bpf.MapKey
-type EndpointKey struct{ bpf.EndpointKey }
+type CgroupKey struct {
+	ClassID uint64
+}
 
 // +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=github.com/cilium/cilium/pkg/bpf.MapValue
@@ -75,8 +77,8 @@ func CreateWithName(mapName string) error {
 
 		EpPolicyMap = bpf.NewMap(mapName,
 			bpf.MapTypeHashOfMaps,
-			&EndpointKey{},
-			int(unsafe.Sizeof(EndpointKey{})),
+			&CgroupKey{},
+			int(unsafe.Sizeof(CgroupKey{})),
 			&EPPolicyValue{},
 			int(unsafe.Sizeof(EPPolicyValue{})),
 			MaxEntries,
@@ -106,10 +108,24 @@ func (v EPPolicyValue) String() string { return fmt.Sprintf("fd=%d", v.Fd) }
 func (v *EPPolicyValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 
 // NewValue returns a new empty instance of the Endpoint Policy fd
-func (k EndpointKey) NewValue() bpf.MapValue { return &EPPolicyValue{} }
+func (k CgroupKey) NewValue() bpf.MapValue { return &EPPolicyValue{} }
 
-func writeEndpoint(keys []*lxcmap.EndpointKey, fd int) error {
-	if option.Config.SockopsEnable == false {
+// GetKeyPtr returns the unsafe pointer to the BPF key
+func (k *CgroupKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
+
+// String converts the key into a human-readable form
+func (k *CgroupKey) String() string { return fmt.Sprintf("%+v", k) }
+
+// newCgroupKey return a new key from the IP address.
+func newCgroupKey(classID uint64) *CgroupKey {
+	return &CgroupKey{
+		ClassID: classID,
+	}
+}
+
+func writeEndpoint(key *CgroupKey, fd int) error {
+	if option.Config.SockopsEnable == false || key.ClassID == 0 {
+		// TODO: Other cases to skip?
 		return nil
 	}
 
@@ -119,20 +135,17 @@ func writeEndpoint(keys []*lxcmap.EndpointKey, fd int) error {
 
 	/* Casting file desriptor into uint32 required by BPF syscall */
 	epFd := &EPPolicyValue{Fd: uint32(fd)}
-
-	for _, v := range keys {
-		if err := EpPolicyMap.Update(v, epFd); err != nil {
-			return err
-		}
-	}
-	return nil
+	return EpPolicyMap.Update(key, epFd)
 }
 
 // WriteEndpoint writes the policy map file descriptor into the map so that
 // the datapath side can do a lookup from EndpointKey->PolicyMap. Locking is
 // handled in the usual way via Map lock. If sockops is disabled this will be
 // a nop.
-func WriteEndpoint(f lxcmap.EndpointFrontend, pm *policymap.PolicyMap) error {
-	keys := lxcmap.GetBPFKeys(f)
-	return writeEndpoint(keys, pm.GetFd())
+func WriteEndpoint(f cgroups.Endpoint, pm *policymap.PolicyMap) error {
+	key, err := cgroups.GetBPFKey(f)
+	if err != nil {
+		return err
+	}
+	return writeEndpoint(newCgroupKey(key), pm.GetFd())
 }
