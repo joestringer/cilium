@@ -39,6 +39,7 @@ type epInfoCache struct {
 	id     uint64
 	ifName string
 	ipvlan bool
+	cgroup string
 
 	// For datapath.EndpointConfiguration
 	identity                               identity.NumericIdentity
@@ -78,6 +79,7 @@ func (e *Endpoint) createEpInfoCache(epdir string) *epInfoCache {
 		ipvlan:                 e.HasIpvlanDataPath(),
 		identity:               e.GetIdentity(),
 		mac:                    e.GetNodeMAC(),
+		cgroup:                 e.Cgroup(),
 		ipv4:                   e.IPv4Address(),
 		ipv6:                   e.IPv6Address(),
 		conntrackLocal:         e.ConntrackLocalLocked(),
@@ -154,6 +156,9 @@ func (ep *epInfoCache) IPv6Address() addressing.CiliumIPv6 {
 // StateDir returns the directory for the endpoint's (next) state.
 func (ep *epInfoCache) StateDir() string    { return ep.epdir }
 func (ep *epInfoCache) GetNodeMAC() mac.MAC { return ep.mac }
+
+// Cgroup returns the cached cgroup for the endpoint.
+func (ep *epInfoCache) Cgroup() string { return ep.cgroup }
 
 func (ep *epInfoCache) ConntrackLocalLocked() bool {
 	return ep.conntrackLocal
