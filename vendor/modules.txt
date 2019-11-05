@@ -62,7 +62,7 @@ github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
 github.com/cespare/xxhash/v2
 # github.com/cilium/arping v1.0.1-0.20190728065459-c5eaf8d7a710 => github.com/cilium/arping v1.0.1-0.20190728065459-c5eaf8d7a710
 github.com/cilium/arping
-# github.com/cilium/ebpf v0.0.0-20191104193500-50dad1760741 => github.com/cilium/ebpf v0.0.0-20191104193500-50dad1760741
+# github.com/cilium/ebpf v0.0.0-20191105032835-03ad5a67d2e3 => github.com/joestringer/ebpf v0.0.0-20191105032835-03ad5a67d2e3
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/internal
