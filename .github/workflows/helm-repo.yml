@@ -1,6 +1,8 @@
 name: Push release to helm repository
 on:
   push:
+    branches:
+      - '!*'
     tags:
       - release-v*
 jobs:
