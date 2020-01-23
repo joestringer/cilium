@@ -1,0 +1,17 @@
+name: Push release to helm repository
+on:
+  push:
+    branches:
+      - '!*'
+    tags:
+      - v*
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: joestringer/helm-gh-pages-action@master
+      with:
+        access-token: ${{ secrets.ACCESS_TOKEN }}
+        charts-folder: install/kubernetes
+        repo: cilium/cilium-charts
