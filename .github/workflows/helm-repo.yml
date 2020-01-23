@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - uses: cgroschupp/helm-gh-pages-action@057b283e2345f92aac1b1fed075db6265d5c72b3
+    - uses: joestringer/helm-gh-pages-action@master
       with:
         access-token: ${{ secrets.ACCESS_TOKEN }}
         charts-folder: install/kubernetes
