@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Authors of Cilium
+// Copyright 2016-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,6 +103,7 @@ const (
 	DbgIPIDMapSucceed6
 	DbgLbStaleCT
 	DbgInheritIdentity
+	DbgSkLookup4
 )
 
 // must be in sync with <bpf/lib/conntrack.h>
@@ -361,6 +362,8 @@ func (n *DebugMsg) subTypeString() string {
 		return fmt.Sprintf("Stale CT entry found stale_ct.rev_nat_id=%d, svc.rev_nat_id=%d", n.Arg2, n.Arg1)
 	case DbgInheritIdentity:
 		return fmt.Sprintf("Inheriting identity=%d from stack", n.Arg1)
+	case DbgSkLookup4:
+		return fmt.Sprintf("Socket lookup: %s", ctLookup4Info1(n))
 	default:
 		return fmt.Sprintf("Unknown message type=%d arg1=%d arg2=%d", n.SubType, n.Arg1, n.Arg2)
 	}

@@ -1,6 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /* Copyright (C) 2016-2020 Authors of Cilium */
-
 #ifndef __LIB_COMMON_H_
 #define __LIB_COMMON_H_
 
@@ -334,6 +333,9 @@ enum {
 #define DROP_UNKNOWN_SENDER	-172
 #define DROP_NAT_NOT_NEEDED	-173 /* Mapped as drop code, though drop not necessary. */
 #define DROP_IS_CLUSTER_IP	-174
+#define DROP_PROXY_LOOKUP_FAILED	-175
+#define DROP_PROXY_SET_FAILED	-176
+#define DROP_PROXY_UNKNOWN_PROTO	-177
 
 #define NAT_PUNT_TO_STACK	DROP_NAT_NOT_NEEDED
 
