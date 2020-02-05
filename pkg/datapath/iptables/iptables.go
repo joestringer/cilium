@@ -1,4 +1,4 @@
-// Copyright 2016-2019 Authors of Cilium
+// Copyright 2016-2020 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -595,7 +595,7 @@ func (m *IptablesManager) installStaticProxyRules() error {
 		}
 		if err == nil && m.haveSocketMatch {
 			// Direct inbound TPROXYed traffic towards the socket
-			err = runProg("iptables", m.inboundProxyRedirectRule("-A"), false)
+			//err = runProg("iptables", m.inboundProxyRedirectRule("-A"), false)
 		}
 	}
 	if err == nil && option.Config.EnableIPv6 {
@@ -641,7 +641,7 @@ func (m *IptablesManager) installStaticProxyRules() error {
 		}
 		if err == nil && m.haveSocketMatch {
 			// Direct inbound TPROXYed traffic towards the socket
-			err = runProg("ip6tables", m.inboundProxyRedirectRule("-A"), false)
+			//err = runProg("ip6tables", m.inboundProxyRedirectRule("-A"), false)
 		}
 	}
 	return err
@@ -670,7 +670,8 @@ func (m *IptablesManager) iptProxyRules(cmd string, proxyPort uint16, ingress bo
 }
 
 func (m *IptablesManager) InstallProxyRules(proxyPort uint16, ingress bool, name string) error {
-	return m.iptProxyRules("-A", proxyPort, ingress, name)
+	return nil
+	//return m.iptProxyRules("-A", proxyPort, ingress, name)
 }
 
 func (m *IptablesManager) RemoveProxyRules(proxyPort uint16, ingress bool, name string) error {
