@@ -13,6 +13,7 @@
 #include "trace.h"
 #include "csum.h"
 #include "l4.h"
+#include "proxy.h"
 
 #define TEMPLATE_LXC_ID 0xffff
 
@@ -85,19 +86,26 @@ int is_valid_lxc_src_ipv4(struct iphdr *ip4 __maybe_unused)
  *   before passing the traffic up to the stack towards the proxy.
  */
 static __always_inline int
-ctx_redirect_to_proxy(struct __ctx_buff *ctx, __be16 proxy_port)
+ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple, __be16 proxy_port)
 {
+	int result = DROP_PROXY_LOOKUP_FAILED;
+	/* TODO: Do we need the port now? */
 	ctx->mark = MARK_MAGIC_TO_PROXY | proxy_port << 16;
 
 #ifdef HOST_REDIRECT_TO_INGRESS
+	/* TODO: Reuse assign_socket from above to solve this case too.
+	 *       Need to handle this on ingress for the other device. */
 	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);
 	/* In this case, the DBG_CAPTURE_PROXY_POST will be sent from the
 	 * programm attached to HOST_IFINDEX. */
 	return redirect(HOST_IFINDEX, BPF_F_INGRESS);
 #else
-	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);
+
+	/* TODO: Rework this for IPv6 support */
+	result = ctx_redirect_to_proxy4(ctx, tuple, proxy_port);
+	/* TODO: Is it relevant that we drop proxy port here? */
 	ctx_change_type(ctx, PACKET_HOST); // Required for ingress packets from overlay
-	return CTX_ACT_OK;
+	return result;
 #endif
 }
 
