@@ -10,6 +10,7 @@
 #error "Proxy redirection is only supported from skb context"
 #endif
 
+#define BPF__PROG_TYPE_sched_act__HELPER_bpf_skc_lookup_udp
 #ifdef BPF__PROG_TYPE_sched_act__HELPER_bpf_skc_lookup_udp
 #define HAVE_SKC_LOOKUP_FLAGS
 #endif
