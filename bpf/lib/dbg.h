@@ -103,9 +103,9 @@ enum {
 				 * arg2: unused */
 	DBG_SK_LOOKUP4,		/* arg1: saddr
 				 * arg2: daddr
-				 * arg3: (dport << 16) | sport
-				 * NOTE: Ports are swapped wrt. CT_LOOKUP4_1.
-				 */
+				 * arg3: (sport << 16) | dport */
+	DBG_SK_ASSIGN,		/* arg1: result
+				 * arg2: unused */
 };
 
 /* Capture types */

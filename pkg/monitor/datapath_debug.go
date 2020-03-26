@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"syscall"
 
 	"github.com/cilium/cilium/pkg/byteorder"
 	"github.com/cilium/cilium/pkg/monitor/api"
@@ -104,6 +105,7 @@ const (
 	DbgLbStaleCT
 	DbgInheritIdentity
 	DbgSkLookup4
+	DbgSkAssign
 )
 
 // must be in sync with <bpf/lib/conntrack.h>
@@ -364,6 +366,8 @@ func (n *DebugMsg) subTypeString() string {
 		return fmt.Sprintf("Inheriting identity=%d from stack", n.Arg1)
 	case DbgSkLookup4:
 		return fmt.Sprintf("Socket lookup: %s", ctLookup4Info1(n))
+	case DbgSkAssign:
+		return fmt.Sprintf("Socket assign: %s", syscall.Errno(n.Arg1).Error())
 	default:
 		return fmt.Sprintf("Unknown message type=%d arg1=%d arg2=%d", n.SubType, n.Arg1, n.Arg2)
 	}
