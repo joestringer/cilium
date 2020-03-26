@@ -8,7 +8,7 @@ TARGET=libcilium.so
 DEPS := $(shell find ../pkg accesslog npds test . \( -name '*.go' ! -name '*_test.go' \))
 $(TARGET): $(DEPS)
 	@$(ECHO_GO)
-	$(QUIET)$(GO) build $(GOBUILD) $(PROXYLIB_GOBUILD) -o $@.$(VERSION_MAJOR) -buildmode=c-shared
+	$(QUIET)$(GO_CGO) build $(GOBUILD) $(PROXYLIB_GOBUILD) -o $@.$(VERSION_MAJOR) -buildmode=c-shared
 	$(QUIET)ln -sf $@.$(VERSION_MAJOR) $@ || cp $@.$(VERSION_MAJOR) $@
 
 all: $(TARGET)
