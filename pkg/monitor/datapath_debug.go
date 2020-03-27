@@ -367,7 +367,7 @@ func (n *DebugMsg) subTypeString() string {
 	case DbgSkLookup4:
 		return fmt.Sprintf("Socket lookup: %s", ctLookup4Info1(n))
 	case DbgSkAssign:
-		return fmt.Sprintf("Socket assign: %s", syscall.Errno(n.Arg1).Error())
+		return fmt.Sprintf("Socket assign (%d, %d): %s", n.Arg2>>16, n.Arg2&0xFFFF, syscall.Errno(n.Arg1).Error())
 	default:
 		return fmt.Sprintf("Unknown message type=%d arg1=%d arg2=%d", n.SubType, n.Arg1, n.Arg2)
 	}

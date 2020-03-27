@@ -59,7 +59,7 @@ assign_socket(struct __ctx_buff *ctx,
 
 	// TODO: Return real error code here
 	result = sk_assign(ctx, sk, 0);
-	cilium_dbg(ctx, DBG_SK_ASSIGN, -result, 0);
+	cilium_dbg(ctx, DBG_SK_ASSIGN, -result, sk->family << 16 | ctx->protocol);
 	if (result == 0)
 		result = CTX_ACT_OK;
 	else
