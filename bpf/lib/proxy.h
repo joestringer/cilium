@@ -195,7 +195,7 @@ ct4_redirect_to_proxy(struct __ctx_buff *ctx __maybe_unused,
 
 	return ctx_redirect_to_proxy4(ctx, proxy_port, sk_tuple, len, nexthdr);
 #else /* BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign */
-	return DROP_PROXY_UNKNOWN_PROTO;
+	return CTX_ACT_OK;
 #endif /* BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign */
 }
 

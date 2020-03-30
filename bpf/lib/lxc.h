@@ -86,9 +86,10 @@ int is_valid_lxc_src_ipv4(struct iphdr *ip4 __maybe_unused)
  *   before passing the traffic up to the stack towards the proxy.
  */
 static __always_inline int
-ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple, __be16 proxy_port)
+ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple __maybe_unused,
+		      __be16 proxy_port)
 {
-	int result = DROP_PROXY_LOOKUP_FAILED;
+	int result;
 	/* TODO: Do we need the port now? */
 	ctx->mark = proxy_port_enchant(proxy_port);
 
@@ -100,6 +101,7 @@ ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple, __be16 proxy_port)
 	 * programm attached to HOST_IFINDEX. */
 	return redirect(HOST_IFINDEX, BPF_F_INGRESS);
 #else
+	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);
 
 	/* TODO: Rework this for IPv6 support */
 	result = ct4_redirect_to_proxy(ctx, tuple, proxy_port);
