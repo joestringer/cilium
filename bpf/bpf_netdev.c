@@ -577,7 +577,7 @@ static __always_inline int do_netdev_encrypt(struct __ctx_buff *ctx, __u16 proto
 	if (ret)
 		return send_drop_notify_error(ctx, 0, ret, CTX_ACT_DROP, METRIC_INGRESS);
 
-	bpf_clear_cb(ctx);
+	bpf_clear_meta(ctx);
 #if defined(ENCRYPT_NODE) || HAVE_PROG_TYPE_HELPER(sched_cls, bpf_fib_lookup)
 	return redirect(encrypt_iface, 0);
 #else
@@ -594,7 +594,7 @@ static __always_inline int do_netdev_encrypt_encap(struct __ctx_buff *ctx)
 	tunnel_endpoint = ctx_load_meta(ctx, 4);
 	ctx->mark = 0;
 
-	bpf_clear_cb(ctx);
+	bpf_clear_meta(ctx);
 	return __encap_and_redirect_with_nodeid(ctx, tunnel_endpoint, seclabel, TRACE_PAYLOAD_LEN);
 }
 
@@ -618,7 +618,7 @@ static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto)
 			return do_netdev_encrypt(ctx, proto);
 	}
 #endif
-	bpf_clear_cb(ctx);
+	bpf_clear_meta(ctx);
 	bpf_skip_nodeport_clear(ctx);
 
 #ifdef FROM_HOST
