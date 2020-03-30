@@ -10,52 +10,32 @@
 #error "Proxy redirection is only supported from skb context"
 #endif
 
-#define BPF__PROG_TYPE_sched_act__HELPER_bpf_skc_lookup_udp 1
 #ifdef BPF__PROG_TYPE_sched_act__HELPER_bpf_skc_lookup_udp
 #define HAVE_SKC_LOOKUP_FLAGS
 #endif
 
 static __always_inline int
-assign_socket(struct __ctx_buff *ctx,
-	      struct bpf_sock_tuple *tuple, __u32 len __maybe_unused,
-	      __u8 nexthdr, bool established)
+assign_socket_tcp(struct __ctx_buff *ctx,
+		  struct bpf_sock_tuple *tuple, __u32 len, bool established)
 {
-	struct bpf_sock *sk = NULL;
-	int result = DROP_PROXY_LOOKUP_FAILED;
-
-	/* Not perfect, but the same series that introduces lookup flags
-	 * introduces the bpf_skc_lookup_udp() helper. */
 #ifdef HAVE_SKC_LOOKUP_FLAGS
 	//__u64 flags = established ? BPF_F_SKL_NO_LISTEN : BPF_F_SKL_NO_EST;
-	//__u64 flags = established ? BPF_F_SKL_NO_LISTEN : 0;
-	__u64 flags = 0;
 #else
 	__u64 flags = 0;
 #endif
+	int result = DROP_PROXY_LOOKUP_FAILED;
+	struct bpf_sock *sk = NULL;
 
-	switch (nexthdr) {
-	case IPPROTO_TCP:
-		//sk = skc_lookup_tcp(ctx, tuple, len, BPF_F_CURRENT_NETNS, flags);
-		break;
-#ifdef BPF__PROG_TYPE_sched_act__HELPER_bpf_skc_lookup_udp
-	case IPPROTO_UDP:
-		sk = sk_lookup_udp(ctx, tuple, len, BPF_F_CURRENT_NETNS, flags);
-		break;
-#endif
-	default:
-		return DROP_PROXY_UNKNOWN_PROTO;
-	}
+	sk = skc_lookup_tcp(ctx, tuple, len, BPF_F_CURRENT_NETNS, flags);
 	if (!sk)
 		goto out;
 
-	if (nexthdr == IPPROTO_TCP) {
-		if (established && sk->state == BPF_TCP_TIME_WAIT)
-			goto release;
+	if (established && sk->state == BPF_TCP_TIME_WAIT)
+		goto release;
 #ifndef HAVE_SKC_LOOKUP_FLAGS
-		if (established && sk->state == BPF_TCP_LISTEN)
-			goto release;
+	if (established && sk->state == BPF_TCP_LISTEN)
+		goto release;
 #endif
-	}
 
 	// TODO: Return real error code here
 	result = sk_assign(ctx, sk, 0);
@@ -68,6 +48,55 @@ release:
 	sk_release(sk);
 out:
 	return result;
+}
+
+static __always_inline int
+assign_socket_udp(struct __ctx_buff *ctx,
+		  struct bpf_sock_tuple *tuple, __u32 len,
+		  bool established __maybe_unused)
+{
+#ifdef HAVE_SKC_LOOKUP_FLAGS
+	//__u64 flags = established ? BPF_F_SKL_NO_LISTEN : BPF_F_SKL_NO_EST;
+	// TODO: Fix bug in submit/bpf-skc-lookup-udp_v0.8 with established
+	//__u64 flags = established ? BPF_F_SKL_NO_LISTEN : 0;
+	__u64 flags = 0;
+#else
+	__u64 flags = 0;
+#endif
+	int result = DROP_PROXY_LOOKUP_FAILED;
+	struct bpf_sock *sk = NULL;
+
+	sk = sk_lookup_udp(ctx, tuple, len, BPF_F_CURRENT_NETNS, flags);
+	if (!sk)
+		goto out;
+
+	result = sk_assign(ctx, sk, 0);
+	cilium_dbg(ctx, DBG_SK_ASSIGN, -result, sk->family << 16 | ctx->protocol);
+	if (result == 0)
+		result = CTX_ACT_OK;
+	else
+		result = DROP_PROXY_SET_FAILED;
+	sk_release(sk);
+out:
+	return result;
+}
+
+static __always_inline int
+assign_socket(struct __ctx_buff *ctx,
+	      struct bpf_sock_tuple *tuple, __u32 len,
+	      __u8 nexthdr, bool established)
+{
+	/* Workaround: While the below functions are nearly identical in C
+	 * implementation, the 'struct bpf_sock *' has a different verifier
+	 * pointer type, which means we can't fold these implementations
+	 * together. */
+	switch (nexthdr) {
+	case IPPROTO_TCP:
+		return assign_socket_tcp(ctx, tuple, len, established);
+	case IPPROTO_UDP:
+		return assign_socket_udp(ctx, tuple, len, established);
+	}
+	return DROP_PROXY_UNKNOWN_PROTO;
 }
 
 static __always_inline __u32
