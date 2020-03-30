@@ -90,7 +90,7 @@ ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple, __be16 proxy_port)
 {
 	int result = DROP_PROXY_LOOKUP_FAILED;
 	/* TODO: Do we need the port now? */
-	ctx->mark = MARK_MAGIC_TO_PROXY | proxy_port << 16;
+	ctx->mark = proxy_port_enchant(proxy_port);
 
 #ifdef HOST_REDIRECT_TO_INGRESS
 	/* TODO: Reuse assign_socket from above to solve this case too.
@@ -123,7 +123,7 @@ ctx_redirect_to_proxy_hairpin(struct __ctx_buff *ctx, __be16 proxy_port)
 	struct iphdr *ip4;
 	int ret;
 
-	ctx_store_meta(ctx, 0, MARK_MAGIC_TO_PROXY | (proxy_port << 16));
+	ctx_store_meta(ctx, CB_PROXY_MAGIC, proxy_port_enchant(proxy_port));
 	bpf_barrier(); /* verifier workaround */
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip4))

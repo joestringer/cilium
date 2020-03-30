@@ -18,14 +18,15 @@ int to_host(struct __ctx_buff *ctx)
 	if ((magic & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_ENCRYPT) {
 		ctx->mark = ctx_load_meta(ctx, 0);
 		set_identity(ctx, ctx_load_meta(ctx, 1));
-	} else if ((magic & 0xFFFF) == MARK_MAGIC_TO_PROXY) {
-		/* Upper 16 bits may carry proxy port number */
-		__be16 port = magic >> 16;
+	} else {
+		__be16 proxy_port = proxy_port_disenchant(magic);
 
-		ctx->mark = magic;
-		ctx_store_meta(ctx, 0, 0);
-		ctx_change_type(ctx, PACKET_HOST);
-		cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, port);
+		if (proxy_port) {
+			ctx->mark = magic;
+			ctx_store_meta(ctx, CB_PROXY_MAGIC, 0);
+			ctx_change_type(ctx, PACKET_HOST);
+			cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);
+		}
 	}
 
 	return CTX_ACT_OK;

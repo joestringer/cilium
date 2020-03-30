@@ -938,7 +938,7 @@ int tail_ipv6_policy(struct __ctx_buff *ctx)
 					ret, CTX_ACT_DROP, METRIC_INGRESS);
 
 	// Store meta: essential for proxy ingress, see bpf_hostdev_ingress.c
-	ctx_store_meta(ctx, 0, ctx->mark);
+	ctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);
 	return ret;
 }
 
@@ -1152,7 +1152,7 @@ int tail_ipv4_policy(struct __ctx_buff *ctx)
 					ret, CTX_ACT_DROP, METRIC_INGRESS);
 
 	// Store meta: essential for proxy ingress, see bpf_hostdev_ingress.c
-	ctx_store_meta(ctx, 0, ctx->mark);
+	ctx_store_meta(ctx, CB_PROXY_MAGIC, ctx->mark);
 	return ret;
 }
 

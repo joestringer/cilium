@@ -18,6 +18,33 @@
 #define HAVE_SKC_LOOKUP_FLAGS
 #endif
 
+/**
+ * proxy_port_enchant
+ * @proxy_port Port to add magic to
+ *
+ * Convert the specified port into a magic number for interaction with other
+ * subsystems.
+ */
+static __always_inline __u32
+proxy_port_enchant(__u32 proxy_port)
+{
+	return MARK_MAGIC_TO_PROXY | proxy_port << 16;
+}
+
+/**
+ * proxy_port_disenchant
+ * @magic Magic number to convert to proxy_port
+ *
+ * Convert the specified magic number back into a proxy port.
+ */
+static __always_inline __be16
+proxy_port_disenchant(__u32 magic)
+{
+	if ((magic & 0xFFFF) == MARK_MAGIC_TO_PROXY)
+		return magic >> 16;
+	return 0;
+}
+
 static __always_inline int
 assign_socket_tcp(struct __ctx_buff *ctx,
 		  struct bpf_sock_tuple *tuple, __u32 len, bool established)
