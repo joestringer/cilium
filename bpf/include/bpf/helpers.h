@@ -81,11 +81,7 @@ static int BPF_FUNC(msg_redirect_hash, struct sk_msg_md *md, void *map,
 static struct bpf_sock *BPF_FUNC(skc_lookup_tcp, struct __sk_buff *skb,
 				 struct bpf_sock_tuple *tuple, __u32 tuple_size,
 				 __u64 netns, __u64 flags);
-/* TODO: Enable with UDP helpers upstream */
 static struct bpf_sock *BPF_FUNC(sk_lookup_udp, struct __sk_buff *skb,
-				 struct bpf_sock_tuple *tuple, __u32 tuple_size,
-				 __u64 netns, __u64 flags);
-static struct bpf_sock *BPF_FUNC(skc_lookup_udp, struct __sk_buff *skb,
 				 struct bpf_sock_tuple *tuple, __u32 tuple_size,
 				 __u64 netns, __u64 flags);
 static int BPF_FUNC(sk_release, struct bpf_sock *sk);
