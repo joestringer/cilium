@@ -58,7 +58,7 @@ DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x
 #define IPV4_LOOPBACK 0x1ffff50a
 #ifdef ENABLE_MASQUERADE
 #define SNAT_IPV4_EXTERNAL IPV4_GATEWAY
-#define SNAT_MAPPING_IPV4 cilium_snat_v4_external
+#define SNAT_MAPPING_IPV4 test_cilium_snat_v4_external
 #define SNAT_MAPPING_IPV4_SIZE 524288
 #endif /* ENABLE_MASQUERADE */
 #endif /* ENABLE_IPV4 */
@@ -66,7 +66,7 @@ DEFINE_IPV6(HOST_IP, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0xa, 0x
 #ifdef ENABLE_IPV6
 #ifdef ENABLE_MASQUERADE
 DEFINE_IPV6(SNAT_IPV6_EXTERNAL, 0xbe, 0xef, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0);
-#define SNAT_MAPPING_IPV6 cilium_snat_v6_external
+#define SNAT_MAPPING_IPV6 test_cilium_snat_v6_external
 #define SNAT_MAPPING_IPV6_SIZE 524288
 #endif /* ENABLE_MASQUERADE */
 #endif /* ENABLE_IPV6 */
