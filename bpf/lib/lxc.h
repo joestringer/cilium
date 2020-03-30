@@ -102,7 +102,7 @@ ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple, __be16 proxy_port)
 #else
 
 	/* TODO: Rework this for IPv6 support */
-	result = ctx_redirect_to_proxy4(ctx, tuple, proxy_port);
+	result = ct4_redirect_to_proxy(ctx, tuple, proxy_port);
 	/* TODO: Is it relevant that we drop proxy port here? */
 	ctx_change_type(ctx, PACKET_HOST); // Required for ingress packets from overlay
 	return result;
