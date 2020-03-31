@@ -16,8 +16,8 @@ int to_host(struct __ctx_buff *ctx)
 	__u32 magic = ctx_load_meta(ctx, 0);
 
 	if ((magic & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_ENCRYPT) {
-		ctx->mark = ctx_load_meta(ctx, 0);
-		set_identity(ctx, ctx_load_meta(ctx, 1));
+		ctx->mark = ctx_load_meta(ctx, CB_ENCRYPT_MAGIC);
+		set_identity(ctx, ctx_load_meta(ctx, CB_ENCRYPT_IDENTITY));
 	} else {
 		__be16 proxy_port = proxy_port_disenchant(magic);
 
