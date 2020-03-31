@@ -264,6 +264,7 @@ extract_tuple_first(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple)
 	int l3_off = ETH_HLEN, l4_off;
 	void *data, *data_end;
 	struct iphdr *ip4;
+	__u16 port;
 
 	if (!revalidate_data_first(ctx, &data, &data_end, &ip4))
 		return DROP_INVALID;
@@ -278,6 +279,10 @@ extract_tuple_first(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple)
 	l4_off = l3_off + ipv4_hdrlen(ip4);
 	if (ctx_load_bytes(ctx, l4_off, &tuple->dport, 4) < 0)
 		return DROP_CT_INVALID_HDR;
+
+	port = tuple->sport;
+	tuple->sport = tuple->dport;
+	tuple->dport = port;
 
 	return CTX_ACT_OK;
 }
