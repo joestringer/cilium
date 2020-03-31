@@ -145,8 +145,10 @@ combine_ports(__u16 dport, __u16 sport)
  * ingress. Will modify 'tuple'!
  */
 static __always_inline int
-ctx_redirect_to_proxy4(struct __ctx_buff *ctx, __be16 proxy_port,
-		       struct bpf_sock_tuple *tuple, __u32 len, __u8 nexthdr)
+ctx_redirect_to_proxy4(struct __ctx_buff *ctx __maybe_unused,
+		       __be16 proxy_port __maybe_unused,
+		       struct bpf_sock_tuple *tuple __maybe_unused,
+		       __u32 len __maybe_unused, __u8 nexthdr __maybe_unused)
 {
 #ifdef ENABLE_IPV4
 	int result;

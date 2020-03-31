@@ -82,6 +82,7 @@ ctx_redirect_to_proxy_hairpin(struct __ctx_buff *ctx, __be16 proxy_port)
 
 	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);
 
+	/* TODO: Why egress?? */
 	return redirect(HOST_IFINDEX, 0);
 }
 
