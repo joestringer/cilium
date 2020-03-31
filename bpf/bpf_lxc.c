@@ -144,7 +144,7 @@ skip_service_lookup:
 	// Check it this is return traffic to an ingress proxy.
 	if ((ret == CT_REPLY || ret == CT_RELATED) && ct_state.proxy_redirect) {
 		// Stack will do a socket match and deliver locally
-		return ctx_redirect_to_proxy(ctx, tuple, 0);
+		return __ctx_redirect_to_proxy(ctx, tuple, 0);
 	}
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip6))
@@ -244,7 +244,7 @@ ct_recreate6:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, reason, monitor);
-		return ctx_redirect_to_proxy(ctx, tuple, verdict);
+		return __ctx_redirect_to_proxy(ctx, tuple, verdict);
 	}
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip6))
@@ -496,7 +496,7 @@ skip_service_lookup:
 	// Check it this is return traffic to an ingress proxy.
 	if ((ret == CT_REPLY || ret == CT_RELATED) && ct_state.proxy_redirect) {
 		// Stack will do a socket match and deliver locally
-		return ctx_redirect_to_proxy(ctx, &tuple, 0);
+		return __ctx_redirect_to_proxy(ctx, &tuple, 0);
 	}
 
 	/* Determine the destination category for policy fallback. */
@@ -598,7 +598,7 @@ ct_recreate4:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, reason, monitor);
-		return ctx_redirect_to_proxy(ctx, &tuple, verdict);
+		return __ctx_redirect_to_proxy(ctx, &tuple, verdict);
 	}
 
 	/* After L4 write in port mapping: revalidate for direct packet access */
@@ -932,7 +932,7 @@ int tail_ipv6_policy(struct __ctx_buff *ctx)
 	/* TODO: Rework IPv6 support */
 	ret = ipv6_policy(ctx, ifindex, src_label, &reason, &tuple, &proxy_port);
 	if (ret == POLICY_ACT_PROXY_REDIRECT)
-		ret = ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
 	if (IS_ERR(ret))
 		return send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,
 					ret, CTX_ACT_DROP, METRIC_INGRESS);
@@ -1146,7 +1146,7 @@ int tail_ipv4_policy(struct __ctx_buff *ctx)
 
 	ret = ipv4_policy(ctx, ifindex, src_label, &reason, &tuple, &proxy_port);
 	if (ret == POLICY_ACT_PROXY_REDIRECT)
-		ret = ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
 	if (IS_ERR(ret))
 		return send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,
 					ret, CTX_ACT_DROP, METRIC_INGRESS);

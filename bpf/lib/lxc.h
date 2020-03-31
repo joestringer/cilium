@@ -57,61 +57,6 @@ int is_valid_lxc_src_ipv4(struct iphdr *ip4 __maybe_unused)
 #endif
 
 /**
- * ctx_redirect_to_proxy configures the ctx with the proxy mark and proxy port
- * number to ensure that the stack redirects the packet into the proxy.
- *
- * It is called from both ingress and egress side of endpoint devices.
- *
- * In regular veth mode:
- * * To apply egress policy, the egressing endpoint configures the mark,
- *   which returns CTX_ACT_OK to pass the packet to the stack in the context
- *   of the source device (stack ingress).
- * * To apply ingress policy, the egressing endpoint or netdev program tail
- *   calls into the policy program which configures the mark here, which
- *   returns CTX_ACT_OK to pass the packet to the stack in the context of the
- *   source device (netdev or egress endpoint device, stack ingress).
- *
- * In chaining mode with bridged endpoint devices:
- * * To apply egress policy, the egressing endpoint configures the mark,
- *   which is propagated via ctx_store_meta() in the caller. The redirect() call
- *   here redirects the packet to the ingress TC filter configured on the bridge
- *   master device.
- * * To apply ingress policy, the stack transmits the packet into the bridge
- *   master device which tail calls into the policy program for the ingress
- *   endpoint, which configures mark and cb[] as described for the egress path.
- *   The redirect() call here redirects the packet to the ingress TC filter
- *   configured on the bridge master device.
- * * In both cases for bridged endpoint devices, the bridge master device has
- *   a BPF program configured upon ingress to transfer the cb[] to the mark
- *   before passing the traffic up to the stack towards the proxy.
- */
-static __always_inline int
-ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple __maybe_unused,
-		      __be16 proxy_port)
-{
-	int result;
-	/* TODO: Do we need the port now? */
-	ctx->mark = proxy_port_enchant(proxy_port);
-
-#ifdef HOST_REDIRECT_TO_INGRESS
-	/* TODO: Reuse assign_socket from above to solve this case too.
-	 *       Need to handle this on ingress for the other device. */
-	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);
-	/* In this case, the DBG_CAPTURE_PROXY_POST will be sent from the
-	 * programm attached to HOST_IFINDEX. */
-	return redirect(HOST_IFINDEX, BPF_F_INGRESS);
-#else
-	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);
-
-	/* TODO: Rework this for IPv6 support */
-	result = ct4_redirect_to_proxy(ctx, tuple, proxy_port);
-	/* TODO: Is it relevant that we drop proxy port here? */
-	ctx_change_type(ctx, PACKET_HOST); // Required for ingress packets from overlay
-	return result;
-#endif
-}
-
-/**
  * ctx_redirect_to_proxy_hairpin redirects to the proxy by hairpining the
  * packet out the incoming interface
  */
