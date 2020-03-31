@@ -144,7 +144,7 @@ skip_service_lookup:
 	// Check it this is return traffic to an ingress proxy.
 	if ((ret == CT_REPLY || ret == CT_RELATED) && ct_state.proxy_redirect) {
 		// Stack will do a socket match and deliver locally
-		return __ctx_redirect_to_proxy(ctx, tuple, 0);
+		return __ctx_redirect_to_proxy(ctx, tuple, 0, true);
 	}
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip6))
@@ -244,7 +244,7 @@ ct_recreate6:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, reason, monitor);
-		return __ctx_redirect_to_proxy(ctx, tuple, verdict);
+		return __ctx_redirect_to_proxy(ctx, tuple, verdict, true);
 	}
 
 	if (!revalidate_data(ctx, &data, &data_end, &ip6))
@@ -496,7 +496,7 @@ skip_service_lookup:
 	// Check it this is return traffic to an ingress proxy.
 	if ((ret == CT_REPLY || ret == CT_RELATED) && ct_state.proxy_redirect) {
 		// Stack will do a socket match and deliver locally
-		return __ctx_redirect_to_proxy(ctx, &tuple, 0);
+		return __ctx_redirect_to_proxy(ctx, &tuple, 0, true);
 	}
 
 	/* Determine the destination category for policy fallback. */
@@ -598,7 +598,7 @@ ct_recreate4:
 		// Trace the packet before its forwarded to proxy
 		send_trace_notify(ctx, TRACE_TO_PROXY, SECLABEL, 0,
 				  0, 0, reason, monitor);
-		return __ctx_redirect_to_proxy(ctx, &tuple, verdict);
+		return __ctx_redirect_to_proxy(ctx, &tuple, verdict, true);
 	}
 
 	/* After L4 write in port mapping: revalidate for direct packet access */
@@ -924,15 +924,17 @@ int tail_ipv6_policy(struct __ctx_buff *ctx)
 	struct ipv6_ct_tuple tuple = {};
 	int ret, ifindex = ctx_load_meta(ctx, CB_IFINDEX);
 	__u32 src_label = ctx_load_meta(ctx, CB_SRC_LABEL);
+	bool tc_ingress = ctx_load_meta(ctx, CB_AT_TC_INGRESS);
 	__u16 proxy_port = 0;
 	__u8 reason = 0;
 
 	ctx_store_meta(ctx, CB_SRC_LABEL, 0);
+	ctx_store_meta(ctx, CB_AT_TC_INGRESS, 0);
 
 	/* TODO: Rework IPv6 support */
 	ret = ipv6_policy(ctx, ifindex, src_label, &reason, &tuple, &proxy_port);
 	if (ret == POLICY_ACT_PROXY_REDIRECT)
-		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port, tc_ingress);
 	if (IS_ERR(ret))
 		return send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,
 					ret, CTX_ACT_DROP, METRIC_INGRESS);
@@ -1139,6 +1141,7 @@ int tail_ipv4_policy(struct __ctx_buff *ctx)
 	struct ipv4_ct_tuple tuple = {};
 	int ret, ifindex = ctx_load_meta(ctx, CB_IFINDEX);
 	__u32 src_label = ctx_load_meta(ctx, CB_SRC_LABEL);
+	bool tc_ingress = ctx_load_meta(ctx, CB_AT_TC_INGRESS);
 	__u16 proxy_port = 0;
 	__u8 reason = 0;
 
@@ -1146,7 +1149,7 @@ int tail_ipv4_policy(struct __ctx_buff *ctx)
 
 	ret = ipv4_policy(ctx, ifindex, src_label, &reason, &tuple, &proxy_port);
 	if (ret == POLICY_ACT_PROXY_REDIRECT)
-		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+		ret = __ctx_redirect_to_proxy(ctx, &tuple, proxy_port, tc_ingress);
 	if (IS_ERR(ret))
 		return send_drop_notify(ctx, src_label, SECLABEL, LXC_ID,
 					ret, CTX_ACT_DROP, METRIC_INGRESS);

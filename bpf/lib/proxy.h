@@ -232,9 +232,9 @@ ct4_redirect_to_proxy(struct __ctx_buff *ctx __maybe_unused,
  */
 static __always_inline int
 __ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple __maybe_unused,
-		        __be16 proxy_port)
+		        __be16 proxy_port, bool tc_ingress)
 {
-	int result;
+	int result = CTX_ACT_OK;
 	/* TODO: Do we need the port now? */
 	ctx->mark = proxy_port_enchant(proxy_port);
 
@@ -249,7 +249,9 @@ __ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple __maybe_unused,
 	cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_PRE, proxy_port);
 
 	/* TODO: Rework this for IPv6 support */
-	result = ct4_redirect_to_proxy(ctx, tuple, proxy_port);
+	if (tc_ingress)
+		result = ct4_redirect_to_proxy(ctx, tuple, proxy_port);
+	/* TODO: Consider folding the else case into the above check? */
 	/* TODO: Is it relevant that we drop proxy port here? */
 	ctx_change_type(ctx, PACKET_HOST); // Required for ingress packets from overlay
 	return result;
@@ -290,7 +292,7 @@ ctx_redirect_to_proxy(struct __ctx_buff *ctx, __be16 proxy_port)
 	ret = extract_tuple_first(ctx, &tuple);
 	if (ret < 0)
 		return ret;
-	return __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+	return __ctx_redirect_to_proxy(ctx, &tuple, proxy_port, true);
 #else /* BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign */
 	ctx->mark = proxy_port_enchant(proxy_port);
 	ctx_store_meta(ctx, CB_PROXY_MAGIC, 0);
