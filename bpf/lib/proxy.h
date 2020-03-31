@@ -256,4 +256,47 @@ __ctx_redirect_to_proxy(struct __ctx_buff *ctx, void *tuple __maybe_unused,
 #endif
 }
 
+static __always_inline int
+extract_tuple_first(struct __ctx_buff *ctx, struct ipv4_ct_tuple *tuple)
+{
+	int l3_off = ETH_HLEN, l4_off;
+	void *data, *data_end;
+	struct iphdr *ip4;
+
+	if (!revalidate_data_first(ctx, &data, &data_end, &ip4))
+		return DROP_INVALID;
+
+	tuple->nexthdr = ip4->protocol;
+	if (tuple->nexthdr != IPPROTO_TCP && tuple->nexthdr != IPPROTO_UDP)
+		return DROP_CT_UNKNOWN_PROTO;
+
+	tuple->daddr = ip4->daddr;
+	tuple->saddr = ip4->saddr;
+
+	l4_off = l3_off + ipv4_hdrlen(ip4);
+	if (ctx_load_bytes(ctx, l4_off, &tuple->dport, 4) < 0)
+		return DROP_CT_INVALID_HDR;
+
+	return CTX_ACT_OK;
+}
+
+static __always_inline int
+ctx_redirect_to_proxy(struct __ctx_buff *ctx, __be16 proxy_port)
+{
+#ifdef BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign
+	struct ipv4_ct_tuple tuple;
+	int ret;
+
+	ret = extract_tuple_first(ctx, &tuple);
+	if (ret < 0)
+		return ret;
+	return __ctx_redirect_to_proxy(ctx, &tuple, proxy_port);
+#else /* BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign */
+	ctx->mark = proxy_port_enchant(proxy_port);
+	ctx_store_meta(ctx, CB_PROXY_MAGIC, 0);
+	ctx_change_type(ctx, PACKET_HOST);
+	return CTX_ACT_OK;
+#endif /* BPF__PROG_TYPE_sched_act__HELPER_bpf_sk_assign */
+}
+
 #endif /* __LIB_PROXY_H_ */

@@ -8,12 +8,14 @@
 #include <netdev_config.h>
 
 #include "lib/common.h"
+#include "lib/proxy.h"
 #include "lib/dbg.h"
 
 __section("to-host")
 int to_host(struct __ctx_buff *ctx)
 {
 	__u32 magic = ctx_load_meta(ctx, 0);
+	int ret = CTX_ACT_OK;
 
 	if ((magic & MARK_MAGIC_HOST_MASK) == MARK_MAGIC_ENCRYPT) {
 		ctx->mark = ctx_load_meta(ctx, CB_ENCRYPT_MAGIC);
@@ -22,14 +24,13 @@ int to_host(struct __ctx_buff *ctx)
 		__be16 proxy_port = proxy_port_disenchant(magic);
 
 		if (proxy_port) {
-			ctx->mark = magic;
-			ctx_store_meta(ctx, CB_PROXY_MAGIC, 0);
-			ctx_change_type(ctx, PACKET_HOST);
+			ret = ctx_redirect_to_proxy(ctx, proxy_port);
+			/* TODO: Register drops */
 			cilium_dbg_capture(ctx, DBG_CAPTURE_PROXY_POST, proxy_port);
 		}
 	}
 
-	return CTX_ACT_OK;
+	return ret;
 }
 
 BPF_LICENSE("GPL");
