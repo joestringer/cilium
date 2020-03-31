@@ -274,7 +274,7 @@ ct_recreate6:
 #endif /* ENABLE_ROUTING */
 			policy_clear_mark(ctx);
 			return ipv6_local_delivery(ctx, l3_off, SECLABEL, ep,
-						   METRIC_EGRESS);
+						   METRIC_EGRESS, true);
 		}
 	}
 
@@ -632,8 +632,8 @@ ct_recreate4:
 			}
 #endif /* ENABLE_ROUTING */
 			policy_clear_mark(ctx);
-			return ipv4_local_delivery(ctx, l3_off, SECLABEL,
-						   ip4, ep, METRIC_EGRESS);
+			return ipv4_local_delivery(ctx, l3_off, SECLABEL, ip4,
+						   ep, METRIC_EGRESS, true);
 		}
 	}
 

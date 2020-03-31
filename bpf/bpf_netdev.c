@@ -97,7 +97,7 @@ static __always_inline __u32 derive_sec_ctx(struct __ctx_buff *ctx __maybe_unuse
 }
 
 static __always_inline int handle_ipv6(struct __ctx_buff *ctx,
-				       __u32 src_identity)
+				       __u32 src_identity, bool tc_ingress)
 {
 	struct remote_endpoint_info *info = NULL;
 	union v6addr node_ip = { };
@@ -184,7 +184,8 @@ static __always_inline int handle_ipv6(struct __ctx_buff *ctx,
 		if (ep->flags & ENDPOINT_F_HOST)
 			return CTX_ACT_OK;
 
-		return ipv6_local_delivery(ctx, l3_off, secctx, ep, METRIC_INGRESS);
+		return ipv6_local_delivery(ctx, l3_off, secctx, ep,
+					   METRIC_INGRESS, tc_ingress);
 	}
 
 #ifdef ENCAP_IFINDEX
@@ -249,11 +250,13 @@ __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV6_FROM_LXC)
 int tail_handle_ipv6(struct __ctx_buff *ctx)
 {
 	__u32 proxy_identity = ctx_load_meta(ctx, CB_SRC_IDENTITY);
+	bool tc_ingress = ctx_load_meta(ctx, CB_AT_TC_INGRESS);
 	int ret;
 
 	ctx_store_meta(ctx, CB_SRC_IDENTITY, 0);
+	ctx_store_meta(ctx, CB_AT_TC_INGRESS, 0);
 
-	ret = handle_ipv6(ctx, proxy_identity);
+	ret = handle_ipv6(ctx, proxy_identity, tc_ingress);
 	if (IS_ERR(ret))
 		return send_drop_notify_error(ctx, proxy_identity, ret,
 					      CTX_ACT_DROP, METRIC_INGRESS);
@@ -274,7 +277,7 @@ __u32 derive_ipv4_sec_ctx(struct __ctx_buff *ctx __maybe_unused,
 }
 
 static __always_inline int handle_ipv4(struct __ctx_buff *ctx,
-				       __u32 src_identity)
+				       __u32 src_identity, bool tc_ingress)
 {
 	struct remote_endpoint_info *info = NULL;
 	struct ipv4_ct_tuple tuple = {};
@@ -363,7 +366,8 @@ static __always_inline int handle_ipv4(struct __ctx_buff *ctx,
 			return CTX_ACT_OK;
 #endif
 
-		return ipv4_local_delivery(ctx, ETH_HLEN, secctx, ip4, ep, METRIC_INGRESS);
+		return ipv4_local_delivery(ctx, ETH_HLEN, secctx, ip4, ep,
+					   METRIC_INGRESS, tc_ingress);
 	}
 
 #ifdef ENCAP_IFINDEX
@@ -433,11 +437,13 @@ __section_tail(CILIUM_MAP_CALLS, CILIUM_CALL_IPV4_FROM_LXC)
 int tail_handle_ipv4(struct __ctx_buff *ctx)
 {
 	__u32 proxy_identity = ctx_load_meta(ctx, CB_SRC_IDENTITY);
+	bool tc_ingress = ctx_load_meta(ctx, CB_AT_TC_INGRESS);
 	int ret;
 
 	ctx_store_meta(ctx, CB_SRC_IDENTITY, 0);
+	ctx_store_meta(ctx, CB_AT_TC_INGRESS, 0);
 
-	ret = handle_ipv4(ctx, proxy_identity);
+	ret = handle_ipv4(ctx, proxy_identity, tc_ingress);
 	if (IS_ERR(ret))
 		return send_drop_notify_error(ctx, proxy_identity, ret, CTX_ACT_DROP, METRIC_INGRESS);
 	return ret;
@@ -605,7 +611,8 @@ static __always_inline int do_netdev_encrypt(struct __ctx_buff *ctx, __u16 proto
 #endif /* ENCAP_IFINDEX */
 #endif /* ENABLE_IPSEC */
 
-static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto)
+static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto,
+				     bool tc_ingress)
 {
 	__u32 identity = 0;
 	int ret;
@@ -649,6 +656,7 @@ static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto)
 #ifdef ENABLE_IPV6
 	case bpf_htons(ETH_P_IPV6):
 		ctx_store_meta(ctx, CB_SRC_IDENTITY, identity);
+		ctx_store_meta(ctx, CB_AT_TC_INGRESS, tc_ingress ? 1 : 0);
 		ep_tail_call(ctx, CILIUM_CALL_IPV6_FROM_LXC);
 		/* See comment below for IPv4. */
 		return send_drop_notify_error(ctx, identity, DROP_MISSED_TAIL_CALL,
@@ -657,6 +665,7 @@ static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto)
 #ifdef ENABLE_IPV4
 	case bpf_htons(ETH_P_IP):
 		ctx_store_meta(ctx, CB_SRC_IDENTITY, identity);
+		ctx_store_meta(ctx, CB_AT_TC_INGRESS, tc_ingress ? 1 : 0);
 		ep_tail_call(ctx, CILIUM_CALL_IPV4_FROM_LXC);
 		/* We are not returning an error here to always allow traffic to
 		 * the stack in case maps have become unavailable.
@@ -677,10 +686,11 @@ static __always_inline int do_netdev(struct __ctx_buff *ctx, __u16 proto)
 /**
  * handle_netdev
  * @ctx		The packet context for this program
+ * @tc_ingress	True if this program is attached at TC ingress
  *
  * Handle netdev traffic coming towards the Cilium-managed network.
  */
-int __always_inline handle_netdev(struct __ctx_buff *ctx)
+int __always_inline handle_netdev(struct __ctx_buff *ctx, bool tc_ingress)
 {
 	int ret = ret;
 	__u16 proto;
@@ -698,19 +708,19 @@ int __always_inline handle_netdev(struct __ctx_buff *ctx)
 	cilium_dbg_capture(ctx, DBG_CAPTURE_SNAT_POST, ctx_get_ifindex(ctx));
 #endif /* ENABLE_MASQUERADE */
 
-	return do_netdev(ctx, proto);
+	return do_netdev(ctx, proto, tc_ingress);
 }
 
 __section("from-netdev")
 int from_netdev(struct __ctx_buff *ctx)
 {
-	return handle_netdev(ctx);
+	return handle_netdev(ctx, true);
 }
 
 __section("from-host")
 int from_host(struct __ctx_buff *ctx)
 {
-	return handle_netdev(ctx);
+	return handle_netdev(ctx, false);
 }
 
 __section("to-netdev")

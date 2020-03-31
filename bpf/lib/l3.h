@@ -60,7 +60,8 @@ static __always_inline int ipv4_l3(struct __ctx_buff *ctx, int l3_off,
 static __always_inline int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_off,
 					       __u32 seclabel,
 					       struct endpoint_info *ep,
-					       __u8 direction)
+					       __u8 direction,
+					       bool tc_ingress __maybe_unused)
 {
 	int ret;
 
@@ -89,6 +90,7 @@ static __always_inline int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_of
 #else
 	ctx_store_meta(ctx, CB_SRC_LABEL, seclabel);
 	ctx_store_meta(ctx, CB_IFINDEX, ep->ifindex);
+	ctx_store_meta(ctx, CB_AT_TC_INGRESS, tc_ingress ? 1 : 0);
 	tail_call(ctx, &POLICY_CALL_MAP, ep->lxc_id);
 	return DROP_MISSED_TAIL_CALL;
 #endif
@@ -98,7 +100,8 @@ static __always_inline int ipv6_local_delivery(struct __ctx_buff *ctx, int l3_of
 static __always_inline int ipv4_local_delivery(struct __ctx_buff *ctx, int l3_off,
 					       __u32 seclabel, struct iphdr *ip4,
 					       struct endpoint_info *ep,
-					       __u8 direction __maybe_unused)
+					       __u8 direction __maybe_unused,
+					       bool tc_ingress __maybe_unused)
 {
 	int ret;
 
@@ -126,6 +129,7 @@ static __always_inline int ipv4_local_delivery(struct __ctx_buff *ctx, int l3_of
 #else
 	ctx_store_meta(ctx, CB_SRC_LABEL, seclabel);
 	ctx_store_meta(ctx, CB_IFINDEX, ep->ifindex);
+	ctx_store_meta(ctx, CB_AT_TC_INGRESS, tc_ingress ? 1 : 0);
 	tail_call(ctx, &POLICY_CALL_MAP, ep->lxc_id);
 	return DROP_MISSED_TAIL_CALL;
 #endif
