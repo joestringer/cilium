@@ -130,6 +130,57 @@ spec:
   selector:
     name: echo-b-host
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-c
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    name: echo-c
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo-c
+spec:
+  selector:
+    matchLabels:
+      name: echo-c
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: echo-c
+    spec:
+      containers:
+      - name: echo-container
+        image: docker.io/cilium/json-mock:1.2
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "localhost"]
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "echo-c-allow-l7-ingress"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: echo-c
+  ingress:
+  - toPorts:
+    - ports:
+      - port: '80'
+        protocol: TCP
+      rules:
+        http:
+        - method: GET
+          path: "/$"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -296,6 +347,284 @@ spec:
     matchLabels:
       name: pod-to-a-l3-denied-cnp
   egress:
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-a-intra-node-proxy-egress-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-a-intra-node-proxy-egress-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-a-intra-node-proxy-egress-allow
+    spec:
+      containers:
+      - name: pod-to-a-intra-node-proxy-egress-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-a"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-a
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-a-intra-node-proxy-egress-allow"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-a-intra-node-proxy-egress-allow
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-a
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - method: "GET"
+          path: "/"
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-a-intra-node-proxy-egress-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-a-intra-node-proxy-egress-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-a-intra-node-proxy-egress-reject
+    spec:
+      containers:
+      - name: pod-to-a-intra-node-proxy-egress-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-a"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-a
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-a-intra-node-proxy-egress-reject"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-a-intra-node-proxy-egress-reject
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-a
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - method: "no-such-method"
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-a-multi-node-proxy-egress-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-a-multi-node-proxy-egress-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-a-multi-node-proxy-egress-allow
+    spec:
+      containers:
+      - name: pod-to-a-multi-node-proxy-egress-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-a"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-a
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-a-multi-node-proxy-egress-allow"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-a-multi-node-proxy-egress-allow
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-a
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - method: "GET"
+          path: "/"
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-a-multi-node-proxy-egress-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-a-multi-node-proxy-egress-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-a-multi-node-proxy-egress-reject
+    spec:
+      containers:
+      - name: pod-to-a-multi-node-proxy-egress-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-a"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-a
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-a-multi-node-proxy-egress-reject"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-a-multi-node-proxy-egress-reject
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-a
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - method: "no-such-method"
   - toEndpoints:
     - matchLabels:
         k8s:io.kubernetes.pod.namespace: kube-system
@@ -512,6 +841,414 @@ spec:
           exec:
             command: [ "curl", "-sS", "--fail", "-o", "/dev/null", "echo-b-host-headless:31313" ]
         name: pod-to-b-multi-node-nodeport
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-intra-node-proxy-ingress-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-ingress-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-intra-node-proxy-ingress-allow
+    spec:
+      containers:
+      - name: pod-to-c-intra-node-proxy-ingress-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-c"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-intra-node-proxy-ingress-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-ingress-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-intra-node-proxy-ingress-reject
+    spec:
+      containers:
+      - name: pod-to-c-intra-node-proxy-ingress-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-c/invalid-path"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-intra-node-proxy-to-proxy-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-to-proxy-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-intra-node-proxy-to-proxy-allow
+    spec:
+      containers:
+      - name: pod-to-c-intra-node-proxy-to-proxy-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-c"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-c-intra-node-proxy-to-proxy-allow"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-to-proxy-allow
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-c
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - {}
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-intra-node-proxy-to-proxy-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-to-proxy-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-intra-node-proxy-to-proxy-reject
+    spec:
+      containers:
+      - name: pod-to-c-intra-node-proxy-to-proxy-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-c/invalid-path"]
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-c-intra-node-proxy-to-proxy-visibility"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-c-intra-node-proxy-to-proxy-reject
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-c
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - {}
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-multi-node-proxy-ingress-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-ingress-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-multi-node-proxy-ingress-allow
+    spec:
+      containers:
+      - name: pod-to-c-multi-node-proxy-ingress-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-c"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-multi-node-proxy-ingress-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-ingress-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-multi-node-proxy-ingress-reject
+    spec:
+      containers:
+      - name: pod-to-c-multi-node-proxy-ingress-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-c/invalid-path"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-multi-node-proxy-to-proxy-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-to-proxy-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-multi-node-proxy-to-proxy-allow
+    spec:
+      containers:
+      - name: pod-to-c-multi-node-proxy-to-proxy-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-c"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-c-multi-node-proxy-to-proxy-allow"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-to-proxy-allow
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-c
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - {}
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-multi-node-proxy-to-proxy-reject
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-to-proxy-reject
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-multi-node-proxy-to-proxy-reject
+    spec:
+      containers:
+      - name: pod-to-c-multi-node-proxy-to-proxy-reject-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["ash", "-c", "! curl -sS --fail --connect-timeout 5 -o /dev/null echo-c/invalid-path"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "pod-to-c-multi-node-proxy-to-proxy-visibility"
+spec:
+  endpointSelector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-to-proxy-reject
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        name: echo-c
+    toPorts:
+    - ports:
+      - port: "80"
+        protocol: TCP
+      rules:
+        http:
+        - {}
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: openshift-dns
+        k8s:dns.operator.openshift.io/daemonset-dns: default
+    toPorts:
+    - ports:
+      - port: "5353"
+        protocol: UDP
 ---
 apiVersion: apps/v1
 kind: Deployment
