@@ -5,7 +5,7 @@ DEFAULT_OUT := connectivity-check.yaml
 HOSTPORT_OUT := connectivity-check-hostport.yaml
 SINGLE_OUT := connectivity-check-single-node.yaml
 
-SRC := $(wildcard *.yaml)
+SRC := $(sort $(wildcard *.yaml))
 ALL_TARGETS := $(DEFAULT_OUT) $(HOSTPORT_OUT) $(SINGLE_OUT)
 HOSTPORT_SRC := $(filter-out $(ALL_TARGETS), $(SRC))
 DEFAULT_SRC := $(filter-out $(wildcard *-hostport.yaml),$(HOSTPORT_SRC))
