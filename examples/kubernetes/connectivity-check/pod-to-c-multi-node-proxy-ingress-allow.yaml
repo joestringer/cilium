@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-to-c-multi-node-proxy-ingress-allow
+spec:
+  selector:
+    matchLabels:
+      name: pod-to-c-multi-node-proxy-ingress-allow
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        name: pod-to-c-multi-node-proxy-ingress-allow
+    spec:
+      containers:
+      - name: pod-to-c-multi-node-proxy-ingress-allow-container
+        image: docker.io/byrnedo/alpine-curl:0.1.8
+        command: ["/bin/ash", "-c", "sleep 1000000000"]
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          exec:
+            command: ["curl", "-sS", "--fail", "-o", "/dev/null", "echo-c"]
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: name
+                operator: In
+                values:
+                - echo-c
+            topologyKey: "kubernetes.io/hostname"
