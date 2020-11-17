@@ -4,7 +4,7 @@
 include ../Makefile.defs
 include ../Makefile.quiet
 
-.PHONY: default clean builder-image cmdref epub latex html run-server stop-server
+.PHONY: builder-image check clean copy-api default epub html html-netlify latex live-preview run-server stop-server update-cmdref
 
 default: html
 
