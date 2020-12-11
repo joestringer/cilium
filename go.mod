@@ -15,7 +15,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/cilium/arping v1.0.1-0.20201126164629-5142c9527af5
 	github.com/cilium/deepequal-gen v0.0.0-20200406125435-ad6a9003139e
-	github.com/cilium/ebpf v0.3.0
+	github.com/cilium/ebpf v0.3.1-0.20201208100132-1027b3037fbd
 	github.com/cilium/ipam v0.0.0-20201020084809-76717fcdb3a2
 	github.com/cilium/proxy v0.0.0-20200728092031-595bb722a4ab
 	github.com/containernetworking/cni v0.7.1

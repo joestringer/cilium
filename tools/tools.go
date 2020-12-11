@@ -29,4 +29,6 @@ import (
 	_ "golang.org/x/tools/cmd/goimports"
 	_ "k8s.io/code-generator/cmd/go-to-protobuf"
 	_ "k8s.io/code-generator/cmd/go-to-protobuf/protoc-gen-gogo"
+
+	_ "github.com/cilium/ebpf/cmd/bpf2go"
 )
