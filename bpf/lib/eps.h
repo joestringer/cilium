@@ -65,7 +65,7 @@ lookup_ip4_endpoint_policy_map(__u32 ip)
 #define V6_CACHE_KEY_LEN (sizeof(union v6addr)*8)
 
 static __always_inline __maybe_unused struct remote_endpoint_info *
-ipcache_lookup6(struct bpf_elf_map *map, const union v6addr *addr,
+ipcache_lookup6(void *map, const union v6addr *addr,
 		__u32 prefix)
 {
 	struct ipcache_key key = {
@@ -80,7 +80,7 @@ ipcache_lookup6(struct bpf_elf_map *map, const union v6addr *addr,
 #define V4_CACHE_KEY_LEN (sizeof(__u32)*8)
 
 static __always_inline __maybe_unused struct remote_endpoint_info *
-ipcache_lookup4(struct bpf_elf_map *map, __be32 addr, __u32 prefix)
+ipcache_lookup4(void *map, __be32 addr, __u32 prefix)
 {
 	struct ipcache_key key = {
 		.lpm_key = { IPCACHE_PREFIX_LEN(prefix), {} },

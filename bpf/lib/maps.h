@@ -10,92 +10,92 @@
 
 #include "bpf/compiler.h"
 
-struct bpf_elf_map __section_maps ENDPOINTS_MAP = {
-	.type		= BPF_MAP_TYPE_HASH,
-	.size_key	= sizeof(struct endpoint_key),
-	.size_value	= sizeof(struct endpoint_info),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= ENDPOINTS_MAP_SIZE,
-	.flags		= CONDITIONAL_PREALLOC,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(struct endpoint_key));
+	__uint(value_size, sizeof(struct endpoint_info));
+	__uint(pinning, 1);
+	__uint(max_entries, ENDPOINTS_MAP_SIZE);
+	__uint(map_flags, CONDITIONAL_PREALLOC);
+} ENDPOINTS_MAP  __section_maps;
 
-struct bpf_elf_map __section_maps METRICS_MAP = {
-	.type		= BPF_MAP_TYPE_PERCPU_HASH,
-	.size_key	= sizeof(struct metrics_key),
-	.size_value	= sizeof(struct metrics_value),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= METRICS_MAP_SIZE,
-	.flags		= CONDITIONAL_PREALLOC,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(key_size, sizeof(struct metrics_key));
+	__uint(value_size, sizeof(struct metrics_value));
+	__uint(pinning, 1);
+	__uint(max_entries, METRICS_MAP_SIZE);
+	__uint(map_flags, CONDITIONAL_PREALLOC);
+} METRICS_MAP __section_maps;
 
 #ifndef SKIP_POLICY_MAP
 /* Global map to jump into policy enforcement of receiving endpoint */
-struct bpf_elf_map __section_maps POLICY_CALL_MAP = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.id		= CILIUM_MAP_POLICY,
-	.size_key	= sizeof(__u32),
-	.size_value	= sizeof(__u32),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= POLICY_PROG_MAP_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	//__uint(id, CILIUM_MAP_POLICY);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
+	__uint(pinning, 1);
+	__uint(max_entries, POLICY_PROG_MAP_SIZE);
+} POLICY_CALL_MAP __section_maps;
 #endif /* SKIP_POLICY_MAP */
 
 #ifdef ENABLE_BANDWIDTH_MANAGER
-struct bpf_elf_map __section_maps THROTTLE_MAP = {
-	.type		= BPF_MAP_TYPE_HASH,
-	.size_key	= sizeof(struct edt_id),
-	.size_value	= sizeof(struct edt_info),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= THROTTLE_MAP_SIZE,
-	.flags		= BPF_F_NO_PREALLOC,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(struct edt_id));
+	__uint(value_size, sizeof(struct edt_info));
+	__uint(pinning, 1);
+	__uint(max_entries, THROTTLE_MAP_SIZE);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} THROTTLE_MAP __section_maps;
 #endif /* ENABLE_BANDWIDTH_MANAGER */
 
 /* Map to link endpoint id to per endpoint cilium_policy map */
 #ifdef SOCKMAP
-struct bpf_elf_map __section_maps EP_POLICY_MAP = {
-	.type		= BPF_MAP_TYPE_HASH_OF_MAPS,
-	.size_key	= sizeof(struct endpoint_key),
-	.size_value	= sizeof(int),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= ENDPOINTS_MAP_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);
+	__uint(key_size, sizeof(struct endpoint_key));
+	__uint(value_size, sizeof(int));
+	__uint(pinning, 1);
+	__uint(max_entries, ENDPOINTS_MAP_SIZE);
+} EP_POLICY_MAP __section_maps;
 #endif
 
 #ifdef POLICY_MAP
 /* Per-endpoint policy enforcement map */
-struct bpf_elf_map __section_maps POLICY_MAP = {
-	.type		= BPF_MAP_TYPE_HASH,
-	.size_key	= sizeof(struct policy_key),
-	.size_value	= sizeof(struct policy_entry),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= POLICY_MAP_SIZE,
-	.flags		= CONDITIONAL_PREALLOC,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(struct policy_key));
+	__uint(value_size, sizeof(struct policy_entry));
+	__uint(pinning, 1);
+	__uint(max_entries, POLICY_MAP_SIZE);
+	__uint(map_flags, CONDITIONAL_PREALLOC);
+} POLICY_MAP __section_maps;
 #endif
 
 #ifndef SKIP_CALLS_MAP
 /* Private per EP map for internal tail calls */
-struct bpf_elf_map __section_maps CALLS_MAP = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.id		= CILIUM_MAP_CALLS,
-	.size_key	= sizeof(__u32),
-	.size_value	= sizeof(__u32),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= CILIUM_CALL_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__uint(id, CILIUM_MAP_CALLS);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
+	__uint(pinning, 1);
+	__uint(max_entries, CILIUM_CALL_SIZE);
+} CALLS_MAP __section_maps;
 #endif /* SKIP_CALLS_MAP */
 
 #ifdef ENCAP_IFINDEX
 
-struct bpf_elf_map __section_maps TUNNEL_MAP = {
-	.type		= BPF_MAP_TYPE_HASH,
-	.size_key	= sizeof(struct endpoint_key),
-	.size_value	= sizeof(struct endpoint_key),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= TUNNEL_ENDPOINT_MAP_SIZE,
-	.flags		= CONDITIONAL_PREALLOC,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(key_size, sizeof(struct endpoint_key));
+	__uint(value_size, sizeof(struct endpoint_key));
+	__uint(pinning, 1);
+	__uint(max_entries, TUNNEL_ENDPOINT_MAP_SIZE);
+	__uint(map_flags, CONDITIONAL_PREALLOC);
+} TUNNEL_MAP __section_maps;
 
 #endif
 
@@ -148,22 +148,22 @@ struct ipcache_key {
 } __packed;
 
 /* Global IP -> Identity map for applying egress label-based policy */
-struct bpf_elf_map __section_maps IPCACHE_MAP = {
-	.type		= LPM_MAP_TYPE,
-	.size_key	= sizeof(struct ipcache_key),
-	.size_value	= sizeof(struct remote_endpoint_info),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= IPCACHE_MAP_SIZE,
-	.flags		= BPF_F_NO_PREALLOC,
-};
+struct {
+	__uint(type, LPM_MAP_TYPE);
+	__uint(key_size, sizeof(struct ipcache_key));
+	__uint(value_size, sizeof(struct remote_endpoint_info));
+	__uint(pinning, 1);
+	__uint(max_entries, IPCACHE_MAP_SIZE);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} IPCACHE_MAP __section_maps;
 
-struct bpf_elf_map __section_maps ENCRYPT_MAP = {
-	.type		= BPF_MAP_TYPE_ARRAY,
-	.size_key	= sizeof(struct encrypt_key),
-	.size_value	= sizeof(struct encrypt_config),
-	.pinning	= PIN_GLOBAL_NS,
-	.max_elem	= 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__uint(key_size, sizeof(struct encrypt_key));
+	__uint(value_size, sizeof(struct encrypt_config));
+	__uint(pinning, 1);
+	__uint(max_entries, 1);
+} ENCRYPT_MAP __section_maps;
 
 #ifndef SKIP_CALLS_MAP
 static __always_inline void ep_tail_call(struct __ctx_buff *ctx,

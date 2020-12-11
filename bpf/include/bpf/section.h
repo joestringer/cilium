@@ -15,7 +15,7 @@
 #endif
 
 #ifndef __section_maps
-# define __section_maps			__section("maps")
+# define __section_maps			__section(".maps")
 #endif
 
 #ifndef BPF_LICENSE
