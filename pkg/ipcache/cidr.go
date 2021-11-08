@@ -130,7 +130,6 @@ func allocate(prefix *net.IPNet, lbls labels.Labels) (*identity.Identity, bool, 
 		return nil, false, nil
 	}
 
-	// Figure out if this call needs to be able to update the selector cache synchronously.
 	allocateCtx, cancel := context.WithTimeout(context.Background(), option.Config.IPAllocationTimeout)
 	defer cancel()
 
