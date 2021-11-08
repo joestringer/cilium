@@ -27,6 +27,9 @@ import (
 
 var (
 	// idMDMU protects the IdentityMetadata map.
+	//
+	// If this mutex will be held at the same time as the IPCache mutex,
+	// this mutex must be taken first and then take the IPCache mutex.
 	idMDMU lock.RWMutex
 	// IdentityMetadata maps IP prefixes (x.x.x.x/32) to their labels.
 	IdentityMetadata = make(map[string]labels.Labels)
