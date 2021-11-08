@@ -377,20 +377,6 @@ func (m *Manager) legacyNodeIpBehavior() bool {
 func (m *Manager) NodeUpdated(n nodeTypes.Node) {
 	log.Debugf("Received node update event from %s: %#v", n.Source, n)
 
-	// If this node event is for the local node, then we only need to update
-	// the IdentityMetadata map with the node's IPs and identity.
-	if n.IsLocal() {
-		for _, address := range n.IPAddresses {
-			upsertIntoIDMD(address.IP.String(), identity.ReservedIdentityHost)
-		}
-		ipcache.IPIdentityCache.TriggerLabelInjection(
-			n.Source,
-			m.selectorCacheUpdater,
-			m.policyTriggerer,
-		)
-		return
-	}
-
 	nodeIdentity := n.Identity()
 	dpUpdate := true
 	nodeIP := n.GetNodeIP(false)
@@ -478,18 +464,16 @@ func (m *Manager) NodeUpdated(n nodeTypes.Node) {
 		}
 	}
 
-	ipcache.IPIdentityCache.TriggerLabelInjection(
-		n.Source,
-		m.selectorCacheUpdater,
-		m.policyTriggerer,
-	)
-
 	m.mutex.Lock()
 	entry, oldNodeExists := m.nodes[nodeIdentity]
 	if oldNodeExists {
 		m.metricEventsReceived.WithLabelValues("update", string(n.Source)).Inc()
 
 		if !source.AllowOverwrite(entry.node.Source, n.Source) {
+			// Done; skip node-handler updates and label injection
+			// triggers below. Includes case where the local host
+			// was discovered locally and then is subsequently
+			// updated by the k8s watcher.
 			m.mutex.Unlock()
 			return
 		}
@@ -532,6 +516,12 @@ func (m *Manager) NodeUpdated(n nodeTypes.Node) {
 		}
 		entry.mutex.Unlock()
 	}
+
+	ipcache.IPIdentityCache.TriggerLabelInjection(
+		n.Source,
+		m.selectorCacheUpdater,
+		m.policyTriggerer,
+	)
 }
 
 // upsertIntoIDMD upserts the given CIDR into the ipcache.IdentityMetadata
