@@ -129,6 +129,18 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 				identity.AddReservedIdentityWithLabels(id.ID, lbls)
 				idsToPropagate[id.ID] = lbls.LabelArray()
 			}
+		} else {
+			// Unlikely, but to balance the allocation / release
+			// we must either add the identity to `toUpsert`, or
+			// immediately release it again. Otherwise it will leak.
+			if _, err := IdentityAllocator.Release(context.TODO(), id); err != nil {
+				log.WithError(err).WithFields(logrus.Fields{
+					logfields.IPAddr: prefix,
+					logfields.Labels: lbls,
+				}).Error(
+					"Failed to release assigned identity during label injection, this might be a leak.",
+				)
+			}
 		}
 	}
 
