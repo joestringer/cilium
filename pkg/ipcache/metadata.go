@@ -149,10 +149,12 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 		triggerer.TriggerPolicyUpdates(false, "kube-apiserver identity updated")
 	}
 
+	IPIdentityCache.mutex.Lock()
+	defer IPIdentityCache.mutex.Unlock()
 	for ip, id := range toUpsert {
-		hIP, key := IPIdentityCache.GetHostIPCache(ip)
-		meta := IPIdentityCache.GetK8sMetadata(ip)
-		if _, err := IPIdentityCache.Upsert(ip, hIP, key, meta, Identity{
+		hIP, key := IPIdentityCache.getHostIPCache(ip)
+		meta := IPIdentityCache.getK8sMetadata(ip)
+		if _, err := IPIdentityCache.upsertLocked(ip, hIP, key, meta, Identity{
 			ID:     id.ID,
 			Source: src,
 		}); err != nil {

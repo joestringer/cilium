@@ -228,6 +228,12 @@ func (ipc *IPCache) updateNamedPorts() (namedPortsChanged bool) {
 // k8sMeta contains Kubernetes-specific metadata such as pod namespace and pod
 // name belonging to the IP (may be nil).
 func (ipc *IPCache) Upsert(ip string, hostIP net.IP, hostKey uint8, k8sMeta *K8sMetadata, newIdentity Identity) (namedPortsChanged bool, err error) {
+	ipc.mutex.Lock()
+	defer ipc.mutex.Unlock()
+	return ipc.upsertLocked(ip, hostIP, hostKey, k8sMeta, newIdentity)
+}
+
+func (ipc *IPCache) upsertLocked(ip string, hostIP net.IP, hostKey uint8, k8sMeta *K8sMetadata, newIdentity Identity) (namedPortsChanged bool, err error) {
 	var newNamedPorts policy.NamedPortMap
 	if k8sMeta != nil {
 		newNamedPorts = k8sMeta.NamedPorts
@@ -248,9 +254,6 @@ func (ipc *IPCache) Upsert(ip string, hostIP net.IP, hostKey uint8, k8sMeta *K8s
 			})
 		}
 	}
-
-	ipc.mutex.Lock()
-	defer ipc.mutex.Unlock()
 
 	var cidr *net.IPNet
 	var oldIdentity *Identity
