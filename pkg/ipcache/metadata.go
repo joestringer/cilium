@@ -74,7 +74,7 @@ func GetIDMetadataByIP(prefix string) labels.Labels {
 // prefix was previously associated with an identity, it will get deallocated,
 // so a balance is kept.
 func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTriggerer) error {
-	if !IdentityAllocator.IsLocalIdentityAllocatorInitialized() {
+	if IdentityAllocator == nil || !IdentityAllocator.IsLocalIdentityAllocatorInitialized() {
 		return ErrLocalIdentityAllocatorUninitialized
 	}
 
