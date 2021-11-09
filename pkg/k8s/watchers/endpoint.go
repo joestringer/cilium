@@ -97,26 +97,26 @@ func (k *K8sWatcher) deleteK8sEndpointV1(ep *slim_corev1.Endpoints, swg *lock.St
 	return nil
 }
 
-// TODO(christarazi): Convert to subscriber model along with the corresponding
-// EndpointSlice version.
-func (k *K8sWatcher) addKubeAPIServerServiceEPs(ep *slim_corev1.Endpoints) {
-	if ep == nil || ep.Name != "kubernetes" {
-		return
-	}
-
-	// See comment in addKubeAPIServerServiceEPSliceV1().
-
+func (k *K8sWatcher) handleKubeAPIServerServiceEPChanges(desiredIPs map[string]struct{}) {
+	// We must perform a diff on the ipcache.IdentityMetadata map in order to
+	// figure out which IPs are stale and should be removed, before we inject
+	// new IPs into the ipcache. The reason is because kube-apiserver will
+	// constantly reconcile this specific object, even when it's been deleted;
+	// effectively, this means we can avoid listening for the delete event.
+	// Therefore, any changes to this specific object can be handled in a
+	// "flattened" manner, since the most up-to-date form of it will be an add
+	// or update event. The former is sent when Cilium is syncing with K8s and
+	// the latter is sent anytime after.
+	//
+	// For example:
+	//   * if a backend is removed or updated, then this will be in the form of
+	//     an update event.
+	//   * if the entire object is deleted, then it will quickly be recreated
+	//     and this will be in the form of an add event.
 	ips := ipcache.FilterMetadataByLabels(labels.LabelKubeAPIServer)
 	currentIPs := make(map[string]struct{}, len(ips))
 	for _, v := range ips {
 		currentIPs[v] = struct{}{}
-	}
-
-	desiredIPs := make(map[string]struct{}, len(currentIPs))
-	for _, sub := range ep.Subsets {
-		for _, addr := range sub.Addresses {
-			desiredIPs[addr.IP] = struct{}{}
-		}
 	}
 
 	toRemove := make(map[string]labels.Labels)
@@ -147,4 +147,21 @@ func (k *K8sWatcher) addKubeAPIServerServiceEPs(ep *slim_corev1.Endpoints) {
 		k.policyRepository.GetSelectorCache(),
 		k.policyManager,
 	)
+}
+
+// TODO(christarazi): Convert to subscriber model along with the corresponding
+// EndpointSlice version.
+func (k *K8sWatcher) addKubeAPIServerServiceEPs(ep *slim_corev1.Endpoints) {
+	if ep == nil || ep.Name != "kubernetes" {
+		return
+	}
+
+	desiredIPs := make(map[string]struct{})
+	for _, sub := range ep.Subsets {
+		for _, addr := range sub.Addresses {
+			desiredIPs[addr.IP] = struct{}{}
+		}
+	}
+
+	k.handleKubeAPIServerServiceEPChanges(desiredIPs)
 }
