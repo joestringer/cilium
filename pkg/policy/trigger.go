@@ -57,7 +57,7 @@ func NewUpdater(r *Repository, regen regenerator) (*Updater, error) {
 	}, nil
 }
 
-// Updater is responsibile for triggering policy updates, in order to perform
+// Updater is responsible for triggering policy updates, in order to perform
 // policy recalculation.
 type Updater struct {
 	*trigger.Trigger
