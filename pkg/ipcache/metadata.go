@@ -334,8 +334,10 @@ func RemoveLabels(prefix string, lbls labels.Labels, src source.Source) labels.L
 
 	// No labels left, perform deallocation
 
+	IPIdentityCache.Lock()
+	defer IPIdentityCache.Unlock()
 	delete(IdentityMetadata, prefix)
-	id, exists := IPIdentityCache.LookupByIP(prefix)
+	id, exists := IPIdentityCache.LookupByIPRLocked(prefix)
 	if !exists {
 		return nil
 	}
@@ -358,7 +360,7 @@ func RemoveLabels(prefix string, lbls labels.Labels, src source.Source) labels.L
 		if lbls.Has(labels.LabelKubeAPIServer[labels.IDNameKubeAPIServer]) {
 			src = source.KubeAPIServer
 		}
-		IPIdentityCache.Delete(prefix, src)
+		IPIdentityCache.deleteLocked(prefix, src)
 	}
 	return nil
 }
