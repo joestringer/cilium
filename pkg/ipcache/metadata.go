@@ -78,6 +78,11 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 		return ErrLocalIdentityAllocatorUninitialized
 	}
 
+	if IPIdentityCache.k8sSyncedChecker == nil ||
+		!IPIdentityCache.k8sSyncedChecker.K8sCacheIsSynced() {
+		return errors.New("k8s cache not fully synced")
+	}
+
 	idMDMU.Lock()
 	defer idMDMU.Unlock()
 
@@ -125,11 +130,6 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 				idsToPropagate[id.ID] = lbls.LabelArray()
 			}
 		}
-	}
-
-	if IPIdentityCache.k8sSyncedChecker == nil ||
-		!IPIdentityCache.k8sSyncedChecker.K8sCacheIsSynced() {
-		return errors.New("k8s cache not fully synced")
 	}
 
 	// Recalculate policy first before upserting into the ipcache.
