@@ -83,6 +83,10 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 		return errors.New("k8s cache not fully synced")
 	}
 
+	if updater == nil || triggerer == nil {
+		return errors.New("policy updater not yet initialized")
+	}
+
 	idMDMU.Lock()
 	defer idMDMU.Unlock()
 
@@ -146,10 +150,6 @@ func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTr
 
 	// Recalculate policy first before upserting into the ipcache.
 	if trigger {
-		if updater == nil || triggerer == nil {
-			return errors.New("policy updater not yet initialized")
-		}
-
 		// Accumulate the desired policy map changes as the identities have
 		// been updated with new labels.
 		var wg sync.WaitGroup
