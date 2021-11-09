@@ -28,7 +28,7 @@ func AddReservedIdentity(ni NumericIdentity, lbl string) {
 }
 
 // AddReservedIdentityWithLabels is the same as AddReservedIdentityWithLabels
-// but accepts mutliple labels.
+// but accepts multiple labels.
 func AddReservedIdentityWithLabels(ni NumericIdentity, lbls labels.Labels) {
 	identity := NewIdentity(ni, lbls)
 	// Pre-calculate the SHA256 hash.
