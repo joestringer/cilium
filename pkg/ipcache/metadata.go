@@ -71,7 +71,7 @@ func GetIDMetadataByIP(prefix string) labels.Labels {
 
 // Note that as this function iterates through the IDMD, if it detects a change
 // in labels for a given prefix, then this might allocate a new identity. If a
-// prefix was previously assoicated with an identity, it will get deallocated,
+// prefix was previously associated with an identity, it will get deallocated,
 // so a balance is kept.
 func InjectLabels(src source.Source, updater identityUpdater, triggerer policyTriggerer) error {
 	if !IdentityAllocator.IsLocalIdentityAllocatorInitialized() {
