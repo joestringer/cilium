@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/pkg/completion"
 	"github.com/cilium/cilium/pkg/envoy"
+	"github.com/cilium/cilium/pkg/ipcache"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
@@ -96,16 +97,21 @@ type Proxy struct {
 	// Datapath updater for installing and removing proxy rules for a single
 	// proxy port
 	datapathUpdater DatapathUpdater
+
+	// IPCache is used for tracking IP->Identity mappings and propagating
+	// them to the proxy via NPHDS in the cases described
+	ipcache *ipcache.IPCache
 }
 
 // StartProxySupport starts the servers to support L7 proxies: xDS GRPC server
 // and access log server.
 func StartProxySupport(minPort uint16, maxPort uint16, stateDir string,
 	accessLogNotifier logger.LogRecordNotifier, accessLogMetadata []string,
-	datapathUpdater DatapathUpdater, mgr EndpointLookup) *Proxy {
+	datapathUpdater DatapathUpdater, mgr EndpointLookup,
+	ipcache *ipcache.IPCache) *Proxy {
 	endpointManager = mgr
 	logger.SetEndpointInfoRegistry(DefaultEndpointInfoRegistry)
-	xdsServer := envoy.StartXDSServer(stateDir)
+	xdsServer := envoy.StartXDSServer(ipcache, stateDir)
 
 	if accessLogNotifier != nil {
 		logger.SetNotifier(accessLogNotifier)
@@ -124,6 +130,7 @@ func StartProxySupport(minPort uint16, maxPort uint16, stateDir string,
 		rangeMax:        maxPort,
 		redirects:       make(map[string]*Redirect),
 		datapathUpdater: datapathUpdater,
+		ipcache:         ipcache,
 	}
 }
 
