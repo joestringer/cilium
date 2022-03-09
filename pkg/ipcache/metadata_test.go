@@ -65,7 +65,7 @@ func TestRemoveLabelsFromIPs(t *testing.T) {
 
 	IPIdentityCache.removeLabelsFromIPs(map[string]labels.Labels{
 		"1.1.1.1": labels.LabelKubeAPIServer,
-	}, source.Local, &mockUpdater{}, &mockTriggerer{})
+	}, source.Local)
 	assert.Len(t, IPIdentityCache.metadata.m, 1)
 	assert.Equal(t, labels.LabelHost, IPIdentityCache.metadata.m["1.1.1.1"])
 
@@ -92,7 +92,7 @@ func TestRemoveLabelsFromIPs(t *testing.T) {
 	assert.Equal(t, 2, id.ReferenceCount)
 	IPIdentityCache.removeLabelsFromIPs(map[string]labels.Labels{ // remove kube-apiserver policy
 		"1.1.1.1": labels.LabelKubeAPIServer,
-	}, source.Local, &mockUpdater{}, &mockTriggerer{})
+	}, source.Local)
 	assert.NotContains(t, IPIdentityCache.metadata.m["1.1.1.1"], labels.LabelKubeAPIServer)
 	assert.Equal(t, 1, id.ReferenceCount) // CIDR policy is left
 }

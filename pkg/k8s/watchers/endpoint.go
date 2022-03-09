@@ -133,8 +133,6 @@ func (k *K8sWatcher) handleKubeAPIServerServiceEPChanges(desiredIPs map[string]s
 		labels.LabelKubeAPIServer,
 		desiredIPs,
 		src,
-		k.policyRepository.GetSelectorCache(),
-		k.endpointManager,
 	)
 
 	for ip := range desiredIPs {

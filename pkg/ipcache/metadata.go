@@ -15,7 +15,6 @@ import (
 
 	"github.com/cilium/cilium/pkg/controller"
 	"github.com/cilium/cilium/pkg/identity"
-	ipcacheTypes "github.com/cilium/cilium/pkg/ipcache/types"
 	"github.com/cilium/cilium/pkg/labels"
 	cidrlabels "github.com/cilium/cilium/pkg/labels/cidr"
 	"github.com/cilium/cilium/pkg/lock"
@@ -312,8 +311,6 @@ func (ipc *IPCache) RemoveLabelsExcluded(
 	lbls labels.Labels,
 	toExclude map[string]struct{},
 	src source.Source,
-	updater ipcacheTypes.PolicyHandler,
-	triggerer ipcacheTypes.DatapathHandler,
 ) {
 	ipc.metadata.applyChangesMU.Lock()
 	defer ipc.metadata.applyChangesMU.Unlock()
@@ -329,7 +326,7 @@ func (ipc *IPCache) RemoveLabelsExcluded(
 		}
 	}
 
-	ipc.removeLabelsFromIPs(toRemove, src, updater, triggerer)
+	ipc.removeLabelsFromIPs(toRemove, src)
 }
 
 // filterByLabels returns all the prefixes inside the ipcache metadata map
@@ -356,12 +353,7 @@ func (m *metadata) filterByLabels(filter labels.Labels) []string {
 // empty.
 //
 // Assumes that the ipcache metadata lock is taken!
-func (ipc *IPCache) removeLabelsFromIPs(
-	m map[string]labels.Labels,
-	src source.Source,
-	updater ipcacheTypes.PolicyHandler,
-	triggerer ipcacheTypes.DatapathHandler,
-) {
+func (ipc *IPCache) removeLabelsFromIPs(m map[string]labels.Labels, src source.Source) {
 	var (
 		idsToAdd    = make(map[identity.NumericIdentity]labels.LabelArray)
 		idsToDelete = make(map[identity.NumericIdentity]labels.LabelArray)
