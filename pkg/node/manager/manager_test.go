@@ -84,10 +84,7 @@ func (i *ipcacheMock) Delete(IP string, source source.Source) bool {
 	return false
 }
 
-func (i *ipcacheMock) TriggerLabelInjection() {
-}
-
-func (i *ipcacheMock) UpsertMetadata(netip.Prefix, labels.Labels, source.Source, ipcacheTypes.ResourceID) {
+func (i *ipcacheMock) UpsertLabels(netip.Prefix, labels.Labels, source.Source, ipcacheTypes.ResourceID) {
 }
 
 type signalNodeHandler struct {

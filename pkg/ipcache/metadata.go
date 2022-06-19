@@ -103,17 +103,6 @@ func (m *metadata) enqueuePrefixUpdates(prefixes ...netip.Prefix) {
 	}
 }
 
-// UpsertMetadata upserts a given IP and its corresponding labels associated
-// with it into the ipcache metadata map. The given labels are not modified nor
-// is its reference saved, as they're copied when inserting into the map.
-//
-// The caller must subsequently call ipc.TriggerLabelInjection() to implement
-// these metadata updates into the datapath.
-func (ipc *IPCache) UpsertMetadata(prefix netip.Prefix, lbls labels.Labels, src source.Source, rid types.ResourceID) {
-	ipc.metadata.upsert(prefix, src, rid, lbls)
-	ipc.metadata.enqueuePrefixUpdates(prefix)
-}
-
 func (m *metadata) upsert(prefix netip.Prefix, src source.Source, resource types.ResourceID, info ...IPMetadata) {
 	if _, ok := m.m[prefix]; !ok {
 		m.m[prefix] = make(prefixInfo)
