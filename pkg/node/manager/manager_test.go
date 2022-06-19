@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/netip"
 	"sync"
 	"testing"
 	"time"
@@ -86,7 +87,7 @@ func (i *ipcacheMock) Delete(IP string, source source.Source) bool {
 func (i *ipcacheMock) TriggerLabelInjection() {
 }
 
-func (i *ipcacheMock) UpsertMetadata(string, labels.Labels, source.Source, ipcacheTypes.ResourceID) {
+func (i *ipcacheMock) UpsertMetadata(netip.Prefix, labels.Labels, source.Source, ipcacheTypes.ResourceID) {
 }
 
 type signalNodeHandler struct {
