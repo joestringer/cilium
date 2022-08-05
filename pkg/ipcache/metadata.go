@@ -326,7 +326,8 @@ func (ipc *IPCache) InjectLabels(ctx context.Context, modifiedPrefixes []netip.P
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 	for p, id := range entriesToReplace {
-		prefix := ipc.handleTemporaryStringReprIssue(p)
+		prefix := p.String()
+		// prefix := ipc.handleTemporaryStringReprIssue(p)
 		hIP, key := ipc.getHostIPCache(prefix)
 		meta := ipc.getK8sMetadata(prefix)
 		if _, err2 := ipc.upsertLocked(
