@@ -191,10 +191,10 @@ func (m *metadata) getLocked(prefix netip.Prefix) prefixInfo {
 func (ipc *IPCache) handleTemporaryStringReprIssue(prefix netip.Prefix) string {
 	p := prefix.String()
 	hIP, _ := ipc.getHostIPCache(p)
-	if hIP.IsUnspecified() {
-		return p
+	if hIP == nil {
+		return prefix.Addr().String()
 	}
-	return prefix.Addr().String()
+	return p
 }
 
 // InjectLabels injects labels from the ipcache metadata (IDMD) map into the
@@ -326,8 +326,7 @@ func (ipc *IPCache) InjectLabels(ctx context.Context, modifiedPrefixes []netip.P
 	ipc.mutex.Lock()
 	defer ipc.mutex.Unlock()
 	for p, id := range entriesToReplace {
-		prefix := p.String()
-		// prefix := ipc.handleTemporaryStringReprIssue(p)
+		prefix := ipc.handleTemporaryStringReprIssue(p)
 		hIP, key := ipc.getHostIPCache(prefix)
 		meta := ipc.getK8sMetadata(prefix)
 		if _, err2 := ipc.upsertLocked(
