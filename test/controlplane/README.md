@@ -16,6 +16,8 @@ approach caters towards:
   would not invalidate the test cases themselves. Only `suite/agent.go` would need
   to be adapted.
 
+- Stress testing. TODO
+
 ## Running the tests
 
 The tests can be run as usual with Go test:

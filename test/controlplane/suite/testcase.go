@@ -319,6 +319,18 @@ func (cpt *ControlPlaneTest) WithValidationTimeout(d time.Duration) *ControlPlan
 	return cpt
 }
 
+func (cpt *ControlPlaneTest) DeleteObjectsFromFile(filename string) *ControlPlaneTest {
+	bs, err := os.ReadFile(filename)
+	if err != nil {
+		cpt.t.Fatalf("Failed to read %s: %s", filename, err)
+	}
+	objs, err := unmarshalList(bs)
+	if err != nil {
+		cpt.t.Fatalf("Failed to unmarshal objects from %s: %s", filename, err)
+	}
+	return cpt.DeleteObjects(objs...)
+}
+
 func (cpt *ControlPlaneTest) Eventually(check func() error) *ControlPlaneTest {
 	if err := cpt.retry(check); err != nil {
 		cpt.t.Fatal(err)
