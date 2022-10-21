@@ -1080,7 +1080,20 @@ func restoreExecPermissions(searchDir string, patterns ...string) error {
 	return err
 }
 
+func initLogging() {
+	// add hooks after setting up metrics in the option.Config
+	logging.DefaultLogger.Hooks.Add(metrics.NewLoggingHook(components.CiliumAgentName))
+
+	// Logging should always be bootstrapped first. Do not add any code above this!
+	if err := logging.SetupLogging(option.Config.LogDriver, logging.LogOptions(option.Config.LogOpt), "cilium-agent", option.Config.Debug); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func initEnv() {
+	bootstrapStats.earlyInit.Start()
+	defer bootstrapStats.earlyInit.End(true)
+
 	var debugDatapath bool
 
 	option.Config.SetMapElementSizes(
@@ -1090,17 +1103,6 @@ func initEnv() {
 		nat.SizeofNatKey6+nat.SizeofNatEntry6,
 		neighborsmap.SizeofNeighKey6+neighborsmap.SizeOfNeighValue,
 		lbmap.SizeofSockRevNat6Key+lbmap.SizeofSockRevNat6Value)
-
-	// Prepopulate option.Config with options from CLI.
-	option.Config.Populate(Vp)
-
-	// add hooks after setting up metrics in the option.Config
-	logging.DefaultLogger.Hooks.Add(metrics.NewLoggingHook(components.CiliumAgentName))
-
-	// Logging should always be bootstrapped first. Do not add any code above this!
-	if err := logging.SetupLogging(option.Config.LogDriver, logging.LogOptions(option.Config.LogOpt), "cilium-agent", option.Config.Debug); err != nil {
-		log.Fatal(err)
-	}
 
 	option.LogRegisteredOptions(Vp, log)
 
@@ -1621,10 +1623,6 @@ func registerDaemonHooks(params daemonParams) error {
 			if params.Clientset.IsEnabled() {
 				k8s.SetClients(params.Clientset, params.Clientset.Slim(), params.Clientset, params.Clientset)
 			}
-
-			bootstrapStats.earlyInit.Start()
-			initEnv()
-			bootstrapStats.earlyInit.End(true)
 
 			// Start running the daemon in the background (blocks on API server's Serve()) to allow rest
 			// of the start hooks to run.
