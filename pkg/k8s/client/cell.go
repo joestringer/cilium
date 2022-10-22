@@ -421,6 +421,8 @@ type FakeClientset struct {
 	*APIExtFakeClientset
 
 	SlimFakeClientset *SlimFakeClientset
+
+	enabled bool
 }
 
 var _ Clientset = &FakeClientset{}
@@ -434,11 +436,11 @@ func (c *FakeClientset) Discovery() discovery.DiscoveryInterface {
 }
 
 func (c *FakeClientset) IsEnabled() bool {
-	return true
+	return c.enabled
 }
 
 func (c *FakeClientset) Disable() {
-	/* nop */
+	c.enabled = false
 }
 
 func (c *FakeClientset) Config() Config {
@@ -451,6 +453,7 @@ func NewFakeClientset() (*FakeClientset, Clientset) {
 		CiliumFakeClientset:     cilium_fake.NewSimpleClientset(),
 		APIExtFakeClientset:     apiext_fake.NewSimpleClientset(),
 		KubernetesFakeClientset: fake.NewSimpleClientset(),
+		enabled:                 true,
 	}
 	return &client, &client
 }

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -78,6 +79,7 @@ import (
 	"github.com/cilium/cilium/pkg/pidfile"
 	"github.com/cilium/cilium/pkg/policy"
 	"github.com/cilium/cilium/pkg/pprof"
+	"github.com/cilium/cilium/pkg/promise"
 	"github.com/cilium/cilium/pkg/sysctl"
 	"github.com/cilium/cilium/pkg/version"
 	wireguard "github.com/cilium/cilium/pkg/wireguard/agent"
@@ -1511,7 +1513,7 @@ func (d *Daemon) initKVStore() {
 	}
 }
 
-func newDatapath(cleaner *daemonCleanup) datapath.Datapath {
+func newDatapath(lc hive.Lifecycle, localNode node.LocalNodeStore) datapath.Datapath {
 	// If there is one device specified, use it to derive better default
 	// allocation prefixes
 	node.InitDefaultPrefix(option.Config.DirectRoutingDevice)
@@ -1524,14 +1526,18 @@ func newDatapath(cleaner *daemonCleanup) datapath.Datapath {
 			if !ip.IsGlobalUnicast() {
 				log.WithField(logfields.IPAddr, ip).Fatal("Invalid IPv6 node address: not a global unicast address")
 			}
-			node.SetIPv6(ip)
+			localNode.Update(func(n *nodeTypes.Node) {
+				n.SetNodeInternalIP(ip)
+			})
 		}
 	}
 	if option.Config.IPv4NodeAddr != "auto" {
 		if ip := net.ParseIP(option.Config.IPv4NodeAddr); ip == nil {
 			log.WithField(logfields.IPAddr, option.Config.IPv4NodeAddr).Fatal("Invalid IPv4 node address")
 		} else {
-			node.SetIPv4(ip)
+			localNode.Update(func(n *nodeTypes.Node) {
+				n.SetNodeInternalIP(ip)
+			})
 		}
 	}
 
@@ -1542,11 +1548,15 @@ func newDatapath(cleaner *daemonCleanup) datapath.Datapath {
 
 	iptablesManager := &iptables.IptablesManager{}
 
-	if err := enableIPForwarding(); err != nil {
-		log.Fatalf("enabling IP forwarding via sysctl failed: %s", err)
-	}
+	lc.Append(hive.Hook{
+		OnStart: func(context.Context) error {
+			if err := enableIPForwarding(); err != nil {
+				log.Fatalf("enabling IP forwarding via sysctl failed: %s", err)
+			}
 
-	iptablesManager.Init()
+			iptablesManager.Init()
+			return nil
+		}})
 
 	var wgAgent *wireguard.Agent
 	if option.Config.EnableWireguard {
@@ -1566,8 +1576,11 @@ func newDatapath(cleaner *daemonCleanup) datapath.Datapath {
 			log.Fatalf("failed to initialize wireguard: %s", err)
 		}
 
-		cleaner.cleanupFuncs.Add(func() {
-			_ = wgAgent.Close()
+		lc.Append(hive.Hook{
+			OnStop: func(context.Context) error {
+				wgAgent.Close()
+				return nil
+			},
 		})
 	} else {
 		// Delete wireguard device from previous run (if such exists)
@@ -1576,30 +1589,28 @@ func newDatapath(cleaner *daemonCleanup) datapath.Datapath {
 	return linuxdatapath.NewDatapath(datapathConfig, iptablesManager, wgAgent)
 }
 
+// daemonCell wraps the existing implementation of the cilium-agent that has
+// not yet been converted into a cell. Provides *Daemon as a Promise that is
+// resolved once daemon has been started to facilitate conversion into modules.
+var daemonCell = cell.Module(
+	"Daemon",
+
+	cell.Provide(newDaemonPromise),
+	cell.Invoke(func(promise.Promise[*Daemon]) {}), // Force instantiation.
+)
+
 type daemonParams struct {
 	cell.In
 
 	Lifecycle      hive.Lifecycle
-	Shutdowner     hive.Shutdowner
-	Config         DaemonCellConfig
-	LocalNodeStore node.LocalNodeStore
 	Clientset      k8sClient.Clientset
+	Datapath       datapath.Datapath
+	LocalNodeStore node.LocalNodeStore
+	Shutdowner     hive.Shutdowner
 }
 
-// registerDaemonHooks registers the lifecycle hooks for the part of the cilium-agent that has
-// not yet been modularized.
-//
-// The Daemon struct and objects referred to from there are not supplied to the graph as
-// object creation in Daemon is intertwined with side-effectful initialization. This stops
-// us from constructing and inspecting the dependency graph, so instead the daemon is constructed
-// and started via an OnStart hook.
-//
-// If an object still owned by Daemon is required in a module, it should be provided indirectly, e.g. via
-// a callback.
-func registerDaemonHooks(params daemonParams) error {
-	if params.Config.SkipDaemon {
-		return nil
-	}
+func newDaemonPromise(params daemonParams) promise.Promise[*Daemon] {
+	daemonResolver, daemonPromise := promise.New[*Daemon]()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cleaner := NewDaemonCleanup()
@@ -1616,6 +1627,9 @@ func registerDaemonHooks(params daemonParams) error {
 	// LocalNodeStore directly.
 	node.SetLocalNodeStore(params.LocalNodeStore)
 
+	var daemon *Daemon
+	var wg sync.WaitGroup
+
 	params.Lifecycle.Append(hive.Hook{
 		OnStart: func(context.Context) error {
 			// Set the k8s clients provided by the K8s client cell. The global clients will be refactored out
@@ -1624,34 +1638,47 @@ func registerDaemonHooks(params daemonParams) error {
 				k8s.SetClients(params.Clientset, params.Clientset.Slim(), params.Clientset, params.Clientset)
 			}
 
+			d, restoredEndpoints, err := newDaemon(
+				ctx, cleaner,
+				WithDefaultEndpointManager(ctx, endpoint.CheckHealth),
+				params.Datapath,
+				params.Clientset)
+			if err != nil {
+				return fmt.Errorf("daemon creation failed: %w", err)
+			}
+			daemon = d
+
+			daemonResolver.Resolve(daemon)
+
 			// Start running the daemon in the background (blocks on API server's Serve()) to allow rest
 			// of the start hooks to run.
-			go runDaemon(ctx, cleaner, params.Shutdowner, params.Clientset)
+			if !option.Config.DryMode {
+				wg.Add(1)
+				go func() {
+					runDaemon(daemon, restoredEndpoints, cleaner, params)
+					wg.Done()
+				}()
+			}
 			return nil
 		},
 		OnStop: func(context.Context) error {
 			cancel()
+			if daemon != nil {
+				daemon.Close()
+			}
 			cleaner.Clean()
+			wg.Wait()
 			return nil
 		},
 	})
-	return nil
+	return daemonPromise
 }
 
 // runDaemon runs the old unmodular part of the cilium-agent.
-func runDaemon(ctx context.Context, cleaner *daemonCleanup, shutdowner hive.Shutdowner, clientset k8sClient.Clientset) {
+func runDaemon(d *Daemon, restoredEndpoints *endpointRestoreState, cleaner *daemonCleanup, params daemonParams) {
 	log.Info("Initializing daemon")
 
 	option.Config.RunMonitorAgent = true
-
-	dp := newDatapath(cleaner)
-
-	d, restoredEndpoints, err := NewDaemon(ctx, cleaner,
-		WithDefaultEndpointManager(ctx, endpoint.CheckHealth),
-		dp, clientset)
-	if err != nil {
-		log.Fatalf("daemon creation failed: %s", err)
-	}
 
 	// This validation needs to be done outside of the agent until
 	// datapath.NodeAddressing is used consistently across the code base.
@@ -1675,6 +1702,7 @@ func runDaemon(ctx context.Context, cleaner *daemonCleanup, shutdowner hive.Shut
 	}
 	bootstrapStats.k8sInit.End(true)
 	restoreComplete := d.initRestore(restoredEndpoints)
+
 	if wgAgent, ok := d.datapath.WireguardAgent().(*wireguard.Agent); ok && wgAgent != nil {
 		if err := wgAgent.RestoreFinished(); err != nil {
 			log.WithError(err).Error("Failed to set up wireguard peers")
@@ -1777,7 +1805,7 @@ func runDaemon(ctx context.Context, cleaner *daemonCleanup, shutdowner hive.Shut
 		err := <-errs
 		if err != nil {
 			log.WithError(err).Error("Cannot start metrics server")
-			shutdowner.Shutdown(hive.ShutdownWithError(err))
+			params.Shutdowner.Shutdown(hive.ShutdownWithError(err))
 		}
 	}(initMetrics())
 
@@ -1799,7 +1827,7 @@ func runDaemon(ctx context.Context, cleaner *daemonCleanup, shutdowner hive.Shut
 	srv.ConfigureAPI()
 	bootstrapStats.initAPI.End(true)
 
-	err = d.SendNotification(monitorAPI.StartMessage(time.Now()))
+	err := d.SendNotification(monitorAPI.StartMessage(time.Now()))
 	if err != nil {
 		log.WithError(err).Warn("Failed to send agent start monitor message")
 	}
@@ -1866,7 +1894,7 @@ func runDaemon(ctx context.Context, cleaner *daemonCleanup, shutdowner hive.Shut
 	err = srv.Serve()
 	if err != nil {
 		log.WithError(err).Error("Error returned from non-returning Serve() call")
-		shutdowner.Shutdown(hive.ShutdownWithError(err))
+		params.Shutdowner.Shutdown(hive.ShutdownWithError(err))
 	}
 }
 

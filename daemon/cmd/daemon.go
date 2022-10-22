@@ -372,8 +372,8 @@ func removeOldRouterState(ipv6 bool, restoredIP net.IP) error {
 	return nil
 }
 
-// NewDaemon creates and returns a new Daemon with the parameters set in c.
-func NewDaemon(ctx context.Context, cleaner *daemonCleanup,
+// newDaemon creates and returns a new Daemon with the parameters set in c.
+func newDaemon(ctx context.Context, cleaner *daemonCleanup,
 	epMgr *endpointmanager.EndpointManager, dp datapath.Datapath,
 	clientset k8sClient.Clientset,
 ) (*Daemon, *endpointRestoreState, error) {
