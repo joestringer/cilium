@@ -81,6 +81,14 @@ main() {
     PR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     git push $user_remote "$PR_BRANCH"
     gh pr create -B "v$branch" -l backport/$branch
+
+    # Leave $version-changes.txt around so we can generate release notes later
+    echo -e "$ersion\n" > $version-release-summary.txt
+    echo "We are pleased to release Cilium $version." >>  $version-release-summary.txt
+    tail -n+4 $version-changes.txt >> $version-release-summary.txt
+    logecho "Creating Github draft release"
+    logrun gh release create -d -F $version-release-summary.txt $version
+    logecho "Browse to $RELEASES_URL to see the draft release"
 }
 
 main "$@"
