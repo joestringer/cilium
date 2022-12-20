@@ -86,6 +86,7 @@ main() {
     echo -e "$ersion\n" > $version-release-summary.txt
     echo "We are pleased to release Cilium $version." >>  $version-release-summary.txt
     tail -n+4 $version-changes.txt >> $version-release-summary.txt
+    cat digest-$version.txt >> $version-release-summary.txt
     logecho "Creating Github draft release"
     logrun gh release create -d -F $version-release-summary.txt $version
     logecho "Browse to $RELEASES_URL to see the draft release"
