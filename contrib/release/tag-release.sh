@@ -34,8 +34,8 @@ handle_args() {
         common::exit 1 "CHARTS_PATH='$CHARTS_PATH' invalid. Clone from github.com/cilium/charts"
     fi
 
-    if ! which hub >/dev/null; then
-        echo "This tool relies on 'hub' from https://github.com/github/hub ." 1>&2
+    if ! which gh >/dev/null; then
+        echo "This tool relies on 'gh' from TODO." 1>&2
         common::exit 1 "Please install this tool first."
     fi
 

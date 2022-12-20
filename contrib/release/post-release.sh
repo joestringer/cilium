@@ -28,7 +28,7 @@ handle_args() {
         common::exit 0
     fi
 
-    if ! hub help | grep -q "pull-request"; then
+    if ! gh help | grep -q "pr"; then
         echo "This tool relies on 'hub' from https://github.com/github/hub." 1>&2
         echo "Please install this tool first." 1>&2
         common::exit 1
@@ -80,7 +80,7 @@ main() {
     logecho "Sending pull request for branch v$branch..."
     PR_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     git push $user_remote "$PR_BRANCH"
-    hub pull-request -b "v$branch" -l backport/$branch
+    gh pr create -B "v$branch" -l backport/$branch
 }
 
 main "$@"
