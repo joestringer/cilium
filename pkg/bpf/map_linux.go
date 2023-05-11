@@ -67,6 +67,7 @@ type MapInfo struct {
 	// this value and the ValueSize values can be different for MapTypePerCPUHash.
 	ReadValueSize uint32
 	ValueSize     uint32
+	Pressure      uint32
 	MaxEntries    uint32
 	Flags         uint32
 	InnerID       uint32
@@ -273,6 +274,7 @@ func (m *Map) WithEvents(c option.BPFEventBufferConfig) *Map {
 func (m *Map) WithPressureMetricThreshold(threshold float64) *Map {
 	// When pressure metric is enabled, we keep track of map keys in cache
 	if m.cache == nil {
+		// TODO: Probe map entry tracking on startup and disable cache
 		m.cache = map[string]*cacheEntry{}
 	}
 
@@ -285,6 +287,25 @@ func (m *Map) WithPressureMetricThreshold(threshold float64) *Map {
 // threshold 0.
 func (m *Map) WithPressureMetric() *Map {
 	return m.WithPressureMetricThreshold(0.0)
+}
+
+// TODO: Tidy this
+func (m *Map) getMapPressure() float64 {
+	var val float64
+
+	info, err := GetMapInfo(os.Getpid(), m.fd)
+	if err != nil {
+		log.WithError(err).WithFields(logrus.Fields{
+			logfields.BPFMapName: m.Name,
+		}).Warn("Unable to gather map pressure data for map")
+		return 0
+	}
+	if info.Pressure > 0 {
+		val = float64(info.Pressure)
+	} else {
+		val = float64(len(m.cache))
+	}
+	return val / float64(m.MaxEntries)
 }
 
 func (m *Map) updatePressureMetric() {
@@ -302,7 +323,8 @@ func (m *Map) updatePressureMetric() {
 		return
 	}
 
-	pvalue := float64(len(m.cache)) / float64(m.MaxEntries)
+	// TODO: Remove the userspace map pressure tracking
+	pvalue := m.getMapPressure()
 	m.pressureGauge.Set(pvalue)
 }
 
@@ -377,6 +399,8 @@ func GetMapInfo(pid int, fd int) (*MapInfo, error) {
 		} else if n, err := fmt.Sscanf(line, "value_size:\t%d", &value); n == 1 && err == nil {
 			info.ValueSize = uint32(value)
 			info.ReadValueSize = uint32(value)
+		} else if n, err := fmt.Sscanf(line, "raw_pressure:\t%d", &value); n == 1 && err == nil {
+			info.Pressure = uint32(value)
 		} else if n, err := fmt.Sscanf(line, "max_entries:\t%d", &value); n == 1 && err == nil {
 			info.MaxEntries = uint32(value)
 		} else if n, err := fmt.Sscanf(line, "map_flags:\t0x%x", &value); n == 1 && err == nil {
