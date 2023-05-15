@@ -325,7 +325,7 @@ func newMap(mapName string, m mapType) *Map {
 			mapInfo[m].maxEntries,
 			0, 0,
 			mapInfo[m].parser,
-		),
+		).WithPressureMetric(),
 		mapType: m,
 		define:  mapInfo[m].bpfDefine,
 	}
