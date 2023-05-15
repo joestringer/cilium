@@ -580,6 +580,18 @@ kind-debug: ## Create a local kind development environment with cilium-agent & c
 	@echo " - 23411: cilium-agent    (kind-worker)"
 	@echo " - 23511: cilium-operator (kind-worker)"
 
+$(eval $(call KIND_ENV,lvh))
+lvh: export LVH_SSH_PORT=2345
+lvh: kind-image ### Build kind images and load into an SSH-accessible LVH instance
+	@echo "LVHLOAD $(LOCAL_AGENT_IMAGE)"
+	docker image save $(LOCAL_AGENT_IMAGE) -o cilium-dev
+	ssh root@localhost -p $(LVH_SSH_PORT) \
+		'cd /host && kind load image-archive cilium-dev'
+	@echo "LVHLOAD $(LOCAL_OPERATOR_IMAGE)"
+	docker image save $(LOCAL_OPERATOR_IMAGE) -o cilium-operator-dev
+	ssh root@localhost -p $(LVH_SSH_PORT) \
+		'cd /host && kind load image-archive cilium-operator-dev'
+
 precheck: check-go-version logging-subsys-field ## Peform build precheck for the source code.
 ifeq ($(SKIP_K8S_CODE_GEN_CHECK),"false")
 	@$(ECHO_CHECK) contrib/scripts/check-k8s-code-gen.sh
