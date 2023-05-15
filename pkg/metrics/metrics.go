@@ -1570,6 +1570,7 @@ type GaugeWithThreshold struct {
 // Set the value of the GaugeWithThreshold.
 func (gwt *GaugeWithThreshold) Set(value float64) {
 	overThreshold := value > gwt.threshold
+	overThreshold = true
 	if gwt.active && !overThreshold {
 		gwt.active = !Unregister(gwt.gauge)
 		if gwt.active {
