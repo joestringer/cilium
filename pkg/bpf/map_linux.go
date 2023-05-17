@@ -308,6 +308,10 @@ func (m *Map) getMapPressure() float64 {
 	return val / float64(m.MaxEntries)
 }
 
+func (m *Map) UpdatePressureMetric() {
+	m.updatePressureMetric()
+}
+
 func (m *Map) updatePressureMetric() {
 	if m.pressureGauge == nil {
 		return

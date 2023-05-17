@@ -7,6 +7,7 @@ package bpf
 
 import (
 	"path"
+	"time"
 
 	"github.com/cilium/cilium/api/v1/models"
 	"github.com/cilium/cilium/pkg/lock"
@@ -19,8 +20,18 @@ var (
 
 func registerMap(path string, m *Map) {
 	mutex.Lock()
+	_, launchUpdate := mapRegister[path]
 	mapRegister[path] = m
 	mutex.Unlock()
+
+	if launchUpdate {
+		go func() {
+			for {
+				m.updatePressureMetric()
+				time.Sleep(100 * time.Millisecond)
+			}
+		}()
+	}
 
 	log.WithField("path", path).Debug("Registered BPF map")
 }

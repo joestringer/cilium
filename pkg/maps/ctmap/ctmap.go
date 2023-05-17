@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -46,6 +47,8 @@ var (
 	}
 
 	mapInfo map[mapType]mapAttributes
+
+	pressureOnce = sync.Once{}
 )
 
 const (
@@ -749,6 +752,19 @@ func maps(e CtEndpoint, ipv4, ipv6 bool) []*Map {
 				mapTypeIPv6AnyLocal))
 		}
 	}
+
+	pressureOnce.Do(func() {
+		go func() {
+			for {
+				for _, m := range result {
+					log.Infof("joe: Updating pressure metric...")
+					m.UpdatePressureMetric()
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}()
+	})
+
 	return result
 }
 
