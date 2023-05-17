@@ -290,7 +290,7 @@ func (m *Map) WithPressureMetric() *Map {
 }
 
 // TODO: Tidy this
-func (m *Map) getMapPressure() float64 {
+func (m *Map) getMapPressure(dbg bool) float64 {
 	var val float64
 
 	info, err := GetMapInfo(os.Getpid(), m.fd)
@@ -309,7 +309,23 @@ func (m *Map) getMapPressure() float64 {
 }
 
 func (m *Map) UpdatePressureMetric() {
-	m.updatePressureMetric()
+	if m.pressureGauge == nil {
+		return
+	}
+
+	// Do a lazy check of MetricsConfig as it is not available at map static
+	// initialization.
+	if !option.Config.MetricsConfig.BPFMapPressure {
+		if !m.withValueCache {
+			m.cache = nil
+		}
+		m.pressureGauge = nil
+		return
+	}
+
+	// TODO: Remove the userspace map pressure tracking
+	pvalue := m.getMapPressure(true)
+	m.pressureGauge.Set(pvalue)
 }
 
 func (m *Map) updatePressureMetric() {
@@ -328,7 +344,7 @@ func (m *Map) updatePressureMetric() {
 	}
 
 	// TODO: Remove the userspace map pressure tracking
-	pvalue := m.getMapPressure()
+	pvalue := m.getMapPressure(false)
 	m.pressureGauge.Set(pvalue)
 }
 
@@ -405,6 +421,7 @@ func GetMapInfo(pid int, fd int) (*MapInfo, error) {
 			info.ReadValueSize = uint32(value)
 		} else if n, err := fmt.Sscanf(line, "raw_pressure:\t%d", &value); n == 1 && err == nil {
 			info.Pressure = uint32(value)
+			log.Infof("joe: found raw pressure metric %+v", info.Pressure)
 		} else if n, err := fmt.Sscanf(line, "max_entries:\t%d", &value); n == 1 && err == nil {
 			info.MaxEntries = uint32(value)
 		} else if n, err := fmt.Sscanf(line, "map_flags:\t0x%x", &value); n == 1 && err == nil {

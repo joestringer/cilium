@@ -757,7 +757,6 @@ func maps(e CtEndpoint, ipv4, ipv6 bool) []*Map {
 		go func() {
 			for {
 				for _, m := range result {
-					log.Infof("joe: Updating pressure metric...")
 					m.UpdatePressureMetric()
 					time.Sleep(100 * time.Millisecond)
 				}
