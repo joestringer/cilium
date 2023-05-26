@@ -132,7 +132,7 @@ func ParseResources(cecNamespace string, cecName string, anySlice []cilium_v2.XD
 				// Envoy since 1.20.0 uses SO_REUSEPORT on listeners by default.
 				// BPF TPROXY is currently not compatible with SO_REUSEPORT, so
 				// disable it.  Note that this may degrade Envoy performance.
-				listener.EnableReusePort = &wrapperspb.BoolValue{Value: false}
+				listener.EnableReusePort = &wrapperspb.BoolValue{Value: true}
 			}
 
 			// Inject Cilium bpf metadata listener filter, if not already present.
