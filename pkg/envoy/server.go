@@ -619,7 +619,7 @@ func (s *XDSServer) addListener(name string, listenerConf func() *envoy_config_l
 		// Envoy since 1.20.0 uses SO_REUSEPORT on listeners by default.
 		// BPF TPROXY is currently not compatible with SO_REUSEPORT, so disable it.
 		// Note that this may degrade Envoy performance.
-		listenerConfig.EnableReusePort = &wrapperspb.BoolValue{Value: false}
+		listenerConfig.EnableReusePort = &wrapperspb.BoolValue{Value: true}
 	}
 	if err := listenerConfig.Validate(); err != nil {
 		log.Errorf("Envoy: Could not validate Listener (%s): %s", err, listenerConfig.String())
