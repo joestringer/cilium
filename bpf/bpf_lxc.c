@@ -682,7 +682,7 @@ static __always_inline int __tail_handle_ipv6(struct __ctx_buff *ctx)
 			}
 #endif /* ENABLE_L7_LB */
 			if (unlikely(svc->count == 0))
-				return DROP_NO_SERVICE;
+				return LB_EMPTY_SVC_RET_CODE;
 
 			ret = lb6_local(get_ct_map6(&tuple), ctx, ETH_HLEN, l4_off,
 					&csum_off, &key, &tuple, svc, &ct_state_new,
@@ -1255,7 +1255,7 @@ static __always_inline int __tail_handle_ipv4(struct __ctx_buff *ctx)
 			}
 #endif /* ENABLE_L7_LB */
 			if (unlikely(svc->count == 0))
-				return DROP_NO_SERVICE;
+				return LB_EMPTY_SVC_RET_CODE;
 
 			ret = lb4_local(get_ct_map4(&tuple), ctx, ETH_HLEN, l4_off,
 					&csum_off, &key, &tuple, svc, &ct_state_new,

@@ -429,6 +429,12 @@ func (h *HeaderfileWriter) WriteNodeConfig(w io.Writer, cfg *datapath.LocalNodeC
 			cDefinesMap["LB4_MAGLEV_MAP_OUTER"] = lbmap.MaglevOuter4MapName
 		}
 	}
+	switch option.Config.EmptyServiceMode {
+	case option.EmptyServiceModeDrop:
+		cDefinesMap["LB_EMPTY_SVC_RET_CODE"] = "DROP_NO_SERVICE"
+	case option.EmptyServiceModePass:
+		cDefinesMap["LB_EMPTY_SVC_RET_CODE"] = "0"
+	}
 	cDefinesMap["HASH_INIT4_SEED"] = fmt.Sprintf("%d", maglev.SeedJhash0)
 	cDefinesMap["HASH_INIT6_SEED"] = fmt.Sprintf("%d", maglev.SeedJhash1)
 

@@ -1151,6 +1151,9 @@ func initializeFlags() {
 	flags.MarkHidden(option.EnableStaleCiliumEndpointCleanup)
 	option.BindEnv(option.EnableStaleCiliumEndpointCleanup)
 
+	flags.String(option.EmptyServiceMode, option.EmptyServiceModeDrop, "Mode for handling traffic towards services with no backends ("+option.GetEmptyServiceModes()+")")
+	option.BindEnv(option.EmptyServiceMode)
+
 	viper.BindPFlags(flags)
 }
 

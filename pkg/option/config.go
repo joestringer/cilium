@@ -507,6 +507,9 @@ const (
 	// HostServicesUDP is the name of EnableHostServicesUDP config
 	HostServicesUDP = "udp"
 
+	// EmptyServiceMode determines how traffic to services with no backend should be handled.
+	EmptyServiceMode = "empty-service-mode"
+
 	// TunnelName is the name of the Tunnel option
 	TunnelName = "tunnel"
 	// TunnelPortName is the name of the TunnelPort option
@@ -1244,11 +1247,23 @@ const (
 
 	// KubeProxyReplacement healthz server bind address
 	KubeProxyReplacementHealthzBindAddr = "kube-proxy-replacement-healthz-bind-address"
+
+	EmptyServiceModeDrop = "drop"
+	EmptyServiceModePass = "pass"
 )
 
 // GetTunnelModes returns the list of all tunnel modes
 func GetTunnelModes() string {
 	return fmt.Sprintf("%s, %s, %s", TunnelVXLAN, TunnelGeneve, TunnelDisabled)
+}
+
+// GetEmptyServiceModes returns a list of valid modes for EmptyServiceMode
+func GetEmptyServiceModes() string {
+	serviceModes := []string{
+		EmptyServiceModeDrop,
+		EmptyServiceModePass,
+	}
+	return strings.Join(serviceModes, ",")
 }
 
 // getEnvName returns the environment variable to be used for the given option name.
@@ -1608,6 +1623,7 @@ type DaemonConfig struct {
 	EnableHostServicesTCP         bool
 	EnableHostServicesUDP         bool
 	EnableHostServicesPeer        bool
+	EmptyServiceMode              string
 	EnablePolicy                  string
 	EnableTracing                 bool
 	EnableUnreachableRoutes       bool
@@ -2682,6 +2698,12 @@ func (c *DaemonConfig) Validate() error {
 	if c.EnableSocketLB && !c.EnableHostServicesUDP && !c.EnableHostServicesTCP {
 		return fmt.Errorf("%s must be at minimum one of [%s,%s]",
 			HostReachableServicesProtos, HostServicesTCP, HostServicesUDP)
+	}
+
+	switch c.EmptyServiceMode {
+	case EmptyServiceModeDrop, EmptyServiceModePass:
+	default:
+		return fmt.Errorf("invalid "+EmptyServiceMode+" '"+c.EmptyServiceMode+"', valid modes = {", GetEmptyServiceModes()+"}")
 	}
 
 	allowedEndpointStatusValues := EndpointStatusValuesMap()
