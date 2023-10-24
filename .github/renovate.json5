@@ -120,6 +120,26 @@
       ]
     },
     {
+      "groupName": "only major minor golang",
+      "groupSlug": "only-major-minor-golang",
+      "matchFiles": [
+        "go.mod",
+      ],
+      "matchDepNames": [
+        "go"
+      ],
+      "matchDatasources": [
+        "golang-version"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+      ],
+      matchBaseBranches: [
+        "main"
+      ]
+    },
+    {
       // Do not allow any updates into stable branches.
       "enabled": false,
       "groupName": "all go dependencies stable",
