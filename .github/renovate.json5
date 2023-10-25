@@ -12,7 +12,7 @@
     "go.sum"
   ],
   "schedule": [
-    "on monday"
+    "on wednesday"
   ],
   postUpdateOptions: [
     "gomodTidy"
