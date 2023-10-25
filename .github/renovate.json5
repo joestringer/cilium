@@ -117,8 +117,7 @@
         "golang-version"
       ],
       "matchUpdateTypes": [
-        "major",
-        "minor",
+        "major"
       ],
       matchBaseBranches: [
         "main"
