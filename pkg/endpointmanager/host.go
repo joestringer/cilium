@@ -49,7 +49,7 @@ func (mgr *endpointManager) OnAddNode(newNode *slim_corev1.Node,
 
 	newLabels := labels.Map2Labels(newNode.GetLabels(), labels.LabelSourceK8s)
 	newIdtyLabels, _ := labelsfilter.Filter(newLabels)
-	nodeEP.UpdateLabels(context.TODO(), newIdtyLabels, nil, false)
+	nodeEP.UpdateLabels(context.TODO(), labels.LabelSourceAny, newIdtyLabels, nil, false)
 
 	return nil
 }
