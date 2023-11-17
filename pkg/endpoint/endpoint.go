@@ -1645,6 +1645,10 @@ func (e *Endpoint) APICanModifyConfig(n models.ConfigurationMap) error {
 func (e *Endpoint) metadataResolver(ctx context.Context,
 	bwm bandwidth.Manager,
 	resolveMetadata MetadataResolverCB) (err error) {
+	if e.K8sNamespaceAndPodNameIsSet() {
+		e.Logger(resolveLabels).Debug("Namespace and Pod are not set")
+		return nil
+	}
 	ns, podName := e.GetK8sNamespace(), e.GetK8sPodName()
 	pod, cp, identityLabels, info, _, err := resolveMetadata(ns, podName)
 	if err != nil {
