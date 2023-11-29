@@ -1630,6 +1630,53 @@ func (e *Endpoint) APICanModifyConfig(n models.ConfigurationMap) error {
 	return nil
 }
 
+// metadataResolver will resolve the endpoint's metadata from a metadata
+// resolver.
+//
+//   - bwm - the bandwidth manager used to update the bandwidth policy for this
+//     endpoint.
+//
+//   - resolveMetadata - the metadata resolver that will be used to retrieve this
+//     endpoint's metadata.
+func (e *Endpoint) metadataResolver(ctx context.Context,
+	bwm bandwidth.Manager,
+	resolveMetadata MetadataResolverCB) (err error) {
+	ns, podName := e.GetK8sNamespace(), e.GetK8sPodName()
+	pod, cp, identityLabels, info, _, err := resolveMetadata(ns, podName)
+	if err != nil {
+		e.Logger(resolveLabels).WithError(err).Warning("Unable to fetch kubernetes labels")
+		return err
+	}
+	e.SetPod(pod)
+	e.SetK8sMetadata(cp)
+	e.UpdateNoTrackRules(func(_, _ string) (noTrackPort string, err error) {
+		po, _, _, _, _, err := resolveMetadata(ns, podName)
+		if err != nil {
+			return "", err
+		}
+		value, _ := annotation.Get(po, annotation.NoTrack, annotation.NoTrackAlias)
+		return value, nil
+	})
+	e.UpdateVisibilityPolicy(func(_, _ string) (proxyVisibility string, err error) {
+		po, _, _, _, _, err := resolveMetadata(ns, podName)
+		if err != nil {
+			return "", err
+		}
+		value, _ := annotation.Get(po, annotation.ProxyVisibility, annotation.ProxyVisibilityAlias)
+		return value, nil
+	})
+	e.UpdateBandwidthPolicy(bwm, func(ns, podName string) (bandwidthEgress string, err error) {
+		_, _, _, _, annotations, err := resolveMetadata(ns, podName)
+		if err != nil {
+			return "", err
+		}
+		return annotations[bandwidth.EgressBandwidth], nil
+	})
+	e.UpdateLabels(ctx, identityLabels, info, true)
+
+	return nil
+}
+
 // MetadataResolverCB provides an implementation for resolving the endpoint
 // metadata for an endpoint such as the associated labels and annotations.
 type MetadataResolverCB func(ns, podName string) (pod *slim_corev1.Pod, _ []slim_corev1.ContainerPort, identityLabels labels.Labels, infoLabels labels.Labels, annotations map[string]string, err error)
@@ -1658,38 +1705,10 @@ func (e *Endpoint) RunMetadataResolver(bwm bandwidth.Manager, resolveMetadata Me
 		controller.ControllerParams{
 			Group: resolveLabelsControllerGroup,
 			DoFunc: func(ctx context.Context) error {
-				ns, podName := e.GetK8sNamespace(), e.GetK8sPodName()
-				pod, cp, identityLabels, info, _, err := resolveMetadata(ns, podName)
+				err := e.metadataResolver(ctx, bwm, resolveMetadata)
 				if err != nil {
-					e.Logger(resolveLabels).WithError(err).Warning("Unable to fetch kubernetes labels")
 					return err
 				}
-				e.SetPod(pod)
-				e.SetK8sMetadata(cp)
-				e.UpdateNoTrackRules(func(_, _ string) (noTrackPort string, err error) {
-					po, _, _, _, _, err := resolveMetadata(ns, podName)
-					if err != nil {
-						return "", err
-					}
-					value, _ := annotation.Get(po, annotation.NoTrack, annotation.NoTrackAlias)
-					return value, nil
-				})
-				e.UpdateVisibilityPolicy(func(_, _ string) (proxyVisibility string, err error) {
-					po, _, _, _, _, err := resolveMetadata(ns, podName)
-					if err != nil {
-						return "", err
-					}
-					value, _ := annotation.Get(po, annotation.ProxyVisibility, annotation.ProxyVisibilityAlias)
-					return value, nil
-				})
-				e.UpdateBandwidthPolicy(bwm, func(ns, podName string) (bandwidthEgress string, err error) {
-					_, _, _, _, annotations, err := resolveMetadata(ns, podName)
-					if err != nil {
-						return "", err
-					}
-					return annotations[bandwidth.EgressBandwidth], nil
-				})
-				e.UpdateLabels(ctx, identityLabels, info, true)
 				close(done)
 				return nil
 			},
