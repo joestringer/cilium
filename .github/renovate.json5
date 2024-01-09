@@ -87,14 +87,13 @@
       ],
     },
     {
-      // Do not allow updates for bpf-next images on stable branches.
-      "enabled": false,
+      // Do not update bpf-next images on stable branches.
       "groupName": "stable lvh-images",
       "groupSlug": "stable-lvh-images",
       "matchPackageNames": [
         "quay.io/lvh-images/kind"
       ],
-      "allowedVersions": "/bpf-next-.*/",
+      "allowedVersions": "!/bpf-next-.*/",
       "matchBaseBranches": [
         "v1.15",
         "v1.14",
