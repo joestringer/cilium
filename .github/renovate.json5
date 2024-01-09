@@ -53,9 +53,6 @@
   "baseBranches": [
     "main",
     "v1.15",
-    "v1.14",
-    "v1.13",
-    "v1.12"
   ],
   "vulnerabilityAlerts": {
     "enabled": true
@@ -96,9 +93,6 @@
       "allowedVersions": "!/bpf-next-.*/",
       "matchBaseBranches": [
         "v1.15",
-        "v1.14",
-        "v1.13",
-        "v1.12"
       ],
     },
     {
