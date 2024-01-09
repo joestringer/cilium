@@ -8,21 +8,7 @@
   // This ensures that the gitAuthor and gitSignOff fields match
   "gitAuthor": "renovate[bot] <bot@renovateapp.com>",
   "includePaths": [
-    ".github/actions/ginkgo/**",
-    ".github/actions/set-env-variables/action.yml",
     ".github/workflows/**",
-    ".github/kind-config.yaml",
-    ".github/kind-config-ipv6.yaml",
-    "images/**",
-    "examples/hubble/*",
-    "go.mod",
-    "go.sum",
-    "Makefile.defs",
-    ".travis.yml",
-    "test/kubernetes-test.sh",
-    "test/packet/scripts/install.sh",
-    "install/kubernetes/cilium/templates/spire/**",
-    "install/kubernetes/cilium/values.yaml.tmpl",
   ],
   "schedule": [
     "on monday"
@@ -54,9 +40,6 @@
     "main",
     "v1.15",
   ],
-  "vulnerabilityAlerts": {
-    "enabled": true
-  },
   "labels": [
     "renovate/stop-updating",
     "kind/enhancement",
