@@ -1926,7 +1926,7 @@ ipv4_policy(struct __ctx_buff *ctx, struct iphdr *ip4, int ifindex, __u32 src_la
 		if (ct_state->auth_required) {
 	 		// verdict = CTX_ACT_OK; /* allow if auth done */		
 		}
-		if (ct_state->auth_ok) {
+		if (ct_state->auth_ok && ct_state->src_sec_id == src_label) {
 	 		verdict = CTX_ACT_OK; /* allow if auth done */		
 		}
 	}
