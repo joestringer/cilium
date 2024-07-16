@@ -176,7 +176,7 @@ jobs:
         timeout-minutes: 15
         run: |
           # renovate: datasource=github-releases depName=mfridman/tparse
-          go install github.com/mfridman/tparse@28967170dce4f9f13de77ec857f7aed4c4294a5f # v0.12.3 (main) with -progress
+          go install github.com/mfridman/tparse@v0.13.0
 
       - name: Wait for images to be available
         timeout-minutes: 30
