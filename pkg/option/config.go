@@ -4160,8 +4160,8 @@ func sanitizeIntParam(vp *viper.Viper, paramName string, paramDefault int) int {
 	return intParam
 }
 
-// validateConfigMap checks whether the flag exists and validate its value
-func validateConfigMap(cmd *cobra.Command, m map[string]interface{}) error {
+// ValidateConfigMap checks whether the flag exists and validate its value
+func ValidateConfigMap(cmd *cobra.Command, m map[string]interface{}) error {
 	flags := cmd.Flags()
 
 	for key, value := range m {
@@ -4250,7 +4250,7 @@ func InitConfig(cmd *cobra.Command, programName, configName string, vp *viper.Vi
 				ReplaceDeprecatedFields(m)
 
 				// validate the config-map
-				if err := validateConfigMap(cmd, m); err != nil {
+				if err := ValidateConfigMap(cmd, m); err != nil {
 					log.WithError(err).Fatal("Incorrect config-map flag value")
 				}
 

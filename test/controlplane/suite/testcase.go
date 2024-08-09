@@ -333,6 +333,12 @@ func (cpt *ControlPlaneTest) Execute(task func() error) *ControlPlaneTest {
 	return cpt
 }
 
+func (cpt *ControlPlaneTest) ValidateAgentConfig(check func(*cobra.Command) error) *ControlPlaneTest {
+	return cpt.Execute(func() error {
+		return check(cpt.agentHandle.hive.Command())
+	})
+}
+
 func (cpt *ControlPlaneTest) retry(act func() error) error {
 	wait := 50 * time.Millisecond
 	end := time.Now().Add(cpt.validationTimeout)
