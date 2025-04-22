@@ -78,9 +78,9 @@ install() {
         echo "Launching Cilium agent $CILIUM_IMAGE..."
         ${SUDO} docker run \
             --name cilium \
-            "$DOCKER_OPTS" \
+            $DOCKER_OPTS \
             "$CILIUM_IMAGE" \
-            cilium-agent "$CILIUM_OPTS"
+            cilium-agent $CILIUM_OPTS
 
         # Copy Cilium CLI
         ${SUDO} docker cp -L cilium:/usr/bin/cilium /usr/bin/cilium-dbg
