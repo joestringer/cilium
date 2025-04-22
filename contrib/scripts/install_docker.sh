@@ -5,7 +5,8 @@
 CILIUM_IMAGE=${CILIUM_IMAGE:-"quay.io/cilium/cilium:stable"}
 CILIUM_OPTS=${CILIUM_OPTS:-""}
 HOST_IP=${HOST_IP:-""}
-RETRIES=${RETRIES:-5}
+INSTALL_RETRIES=${INSTALL_RETRIES:-0}
+CILIUM_RETRIES=${CILIUM_RETRIES:-12}
 DNS_RETRIES=${DNS_RETRIES:-24}
 
 set -e
@@ -67,7 +68,7 @@ DOCKER_OPTS+=" --volume /run/xtables.lock:/run/xtables.lock"
 
 install() {
     cilium_started=false
-    retries=${RETRIES}
+    retries=${INSTALL_RETRIES}
     while [ $cilium_started = false ]; do
         if [ -n "$(${SUDO} docker ps -a -q -f name=cilium)" ]; then
             echo "Shutting down running Cilium agent"
@@ -86,7 +87,7 @@ install() {
         ${SUDO} ln -fs /usr/bin/cilium-dbg /usr/bin/cilium
 
         # Wait for cilium agent to become available
-        for ((i = 0 ; i < 12; i++)); do
+        for ((i = 0 ; i < "$CILIUM_RETRIES"; i++)); do
             if ${SUDO} cilium-dbg status --brief > /dev/null 2>&1; then
                 cilium_started=true
                 break
