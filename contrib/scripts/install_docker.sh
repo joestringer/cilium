@@ -3,15 +3,9 @@
 # Copyright Authors of Cilium
 
 CILIUM_IMAGE=${CILIUM_IMAGE:-"quay.io/cilium/cilium:stable"}
-CLUSTER_ADDR=${CLUSTER_ADDR:-""}
 CONFIG_OVERWRITES=${CONFIG_OVERWRITES:-""}
-CA_CERT=${CA_CERT:-""}
-CLIENT_CERT=${CLIENT_CERT:-""}
-CLIENT_KEY=${CLIENT_KEY:-""}
 RETRIES=0
 LB_SOCK_OPT="--bpf-lb-sock"
-CLUSTER_NAME=""
-CLUSTER_ID=""
 
 set -e
 shopt -s extglob
@@ -54,55 +48,7 @@ if [ "$1" = "uninstall" ] ; then
     exit 0
 fi
 
-if [ -z "$CLUSTER_ADDR" ] ; then
-    echo "CLUSTER_ADDR must be defined to the IP:PORT at which the clustermesh-apiserver is reachable."
-    exit 1
-fi
-
-port='@(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5][0-9][0-9][0-9][0-9]|[1-9][0-9][0-9][0-9]|[1-9][0-9][0-9]|[1-9][0-9]|[1-9])'
-byte='@(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])'
-ipv4="$byte\.$byte\.$byte\.$byte"
-
-# Default port is for a HostPort service
-case "$CLUSTER_ADDR" in
-    \[+\([0-9a-fA-F:]\)\]:$port)
-	CLUSTER_PORT=${CLUSTER_ADDR##\[*\]:}
-	CLUSTER_IP=${CLUSTER_ADDR#\[}
-	CLUSTER_IP=${CLUSTER_IP%%\]:*}
-	;;
-    "$ipv4:$port")
-	CLUSTER_PORT=${CLUSTER_ADDR##*:}
-	CLUSTER_IP=${CLUSTER_ADDR%%:*}
-	;;
-    *:*)
-	echo "Malformed CLUSTER_ADDR: $CLUSTER_ADDR"
-	exit 1
-	;;
-    *)
-	CLUSTER_PORT=2379
-	CLUSTER_IP=$CLUSTER_ADDR
-	;;
-esac
-
-${SUDO} mkdir -p /var/lib/cilium/etcd
-${SUDO} tee /var/lib/cilium/etcd/ca.crt <<EOF >/dev/null
-${CA_CERT}EOF
-${SUDO} tee /var/lib/cilium/etcd/tls.crt <<EOF >/dev/null
-${CLIENT_CERT}EOF
-${SUDO} tee /var/lib/cilium/etcd/tls.key <<EOF >/dev/null
-${CLIENT_KEY}EOF
-${SUDO} tee /var/lib/cilium/etcd/config.yaml <<EOF >/dev/null
----
-trusted-ca-file: /var/lib/cilium/etcd/ca.crt
-cert-file: /var/lib/cilium/etcd/tls.crt
-key-file: /var/lib/cilium/etcd/tls.key
-endpoints:
-- https://clustermesh-apiserver.cilium.io:$CLUSTER_PORT
-EOF
-
-CILIUM_OPTS=" --join-cluster ${LB_SOCK_OPT} --enable-endpoint-health-checking=false"
-CILIUM_OPTS+=" --cluster-name ${CLUSTER_NAME} --cluster-id ${CLUSTER_ID}"
-CILIUM_OPTS+=" --kvstore etcd --kvstore-opt etcd.config=/var/lib/cilium/etcd/config.yaml"
+CILIUM_OPTS=" ${LB_SOCK_OPT} --enable-endpoint-health-checking=false"
 if [ -n "$HOST_IP" ] ; then
     CILIUM_OPTS+=" --ipv4-node $HOST_IP"
 fi
@@ -122,7 +68,6 @@ DOCKER_OPTS+=" --volume /boot:/boot"
 DOCKER_OPTS+=" --volume /lib/modules:/lib/modules"
 DOCKER_OPTS+=" --volume /sys/fs/bpf:/sys/fs/bpf"
 DOCKER_OPTS+=" --volume /run/xtables.lock:/run/xtables.lock"
-DOCKER_OPTS+=" --add-host clustermesh-apiserver.cilium.io:$CLUSTER_IP"
 
 cilium_started=false
 retries=${RETRIES}
