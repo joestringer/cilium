@@ -15,6 +15,25 @@ shopt -s extglob
 # Run without sudo if not available (e.g., running as root)
 SUDO=
 
+CILIUM_OPTS+=" --enable-endpoint-health-checking=false"
+if [ -n "$HOST_IP" ] ; then
+    CILIUM_OPTS+=" --ipv4-node $HOST_IP"
+fi
+
+DOCKER_OPTS=" -d --log-driver local --restart always"
+DOCKER_OPTS+=" --privileged --network host --cap-add NET_ADMIN --cap-add SYS_MODULE"
+# Run cilium agent in the host's cgroup namespace so that
+# socket-based load balancing works as expected.
+# See https://github.com/cilium/cilium/pull/16259 for more details.
+DOCKER_OPTS+=" --cgroupns=host"
+DOCKER_OPTS+=" --volume /var/lib/cilium/etcd:/var/lib/cilium/etcd"
+DOCKER_OPTS+=" --volume /var/run/cilium:/var/run/cilium"
+DOCKER_OPTS+=" --volume /var/run/cilium/netns:/var/run/cilium/netns"
+DOCKER_OPTS+=" --volume /boot:/boot"
+DOCKER_OPTS+=" --volume /lib/modules:/lib/modules"
+DOCKER_OPTS+=" --volume /sys/fs/bpf:/sys/fs/bpf"
+DOCKER_OPTS+=" --volume /run/xtables.lock:/run/xtables.lock"
+
 uninstall() {
     set +e
     if [ -n "$(${SUDO} docker ps -a -q -f name=cilium)" ]; then
@@ -46,25 +65,6 @@ uninstall() {
     fi
     popd
 }
-
-CILIUM_OPTS+=" --enable-endpoint-health-checking=false"
-if [ -n "$HOST_IP" ] ; then
-    CILIUM_OPTS+=" --ipv4-node $HOST_IP"
-fi
-
-DOCKER_OPTS=" -d --log-driver local --restart always"
-DOCKER_OPTS+=" --privileged --network host --cap-add NET_ADMIN --cap-add SYS_MODULE"
-# Run cilium agent in the host's cgroup namespace so that
-# socket-based load balancing works as expected.
-# See https://github.com/cilium/cilium/pull/16259 for more details.
-DOCKER_OPTS+=" --cgroupns=host"
-DOCKER_OPTS+=" --volume /var/lib/cilium/etcd:/var/lib/cilium/etcd"
-DOCKER_OPTS+=" --volume /var/run/cilium:/var/run/cilium"
-DOCKER_OPTS+=" --volume /var/run/cilium/netns:/var/run/cilium/netns"
-DOCKER_OPTS+=" --volume /boot:/boot"
-DOCKER_OPTS+=" --volume /lib/modules:/lib/modules"
-DOCKER_OPTS+=" --volume /sys/fs/bpf:/sys/fs/bpf"
-DOCKER_OPTS+=" --volume /run/xtables.lock:/run/xtables.lock"
 
 install() {
     cilium_started=false
