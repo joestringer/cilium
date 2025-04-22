@@ -59,6 +59,7 @@ DOCKER_OPTS+=" --privileged --network host --cap-add NET_ADMIN --cap-add SYS_MOD
 DOCKER_OPTS+=" --cgroupns=host"
 DOCKER_OPTS+=" --volume /var/lib/cilium/etcd:/var/lib/cilium/etcd"
 DOCKER_OPTS+=" --volume /var/run/cilium:/var/run/cilium"
+DOCKER_OPTS+=" --volume /var/run/cilium/netns:/var/run/cilium/netns"
 DOCKER_OPTS+=" --volume /boot:/boot"
 DOCKER_OPTS+=" --volume /lib/modules:/lib/modules"
 DOCKER_OPTS+=" --volume /sys/fs/bpf:/sys/fs/bpf"
