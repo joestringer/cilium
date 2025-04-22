@@ -3,9 +3,10 @@
 # Copyright Authors of Cilium
 
 CILIUM_IMAGE=${CILIUM_IMAGE:-"quay.io/cilium/cilium:stable"}
-CONFIG_OVERWRITES=${CONFIG_OVERWRITES:-""}
-RETRIES=0
-LB_SOCK_OPT="--bpf-lb-sock"
+CILIUM_OPTS=${CILIUM_OPTS:-""}
+HOST_IP=${HOST_IP:-""}
+RETRIES=${RETRIES:-5}
+DNS_RETRIES=${DNS_RETRIES:-24}
 
 set -e
 shopt -s extglob
@@ -17,9 +18,10 @@ if [ ! "$(whoami)" = "root" ] ; then
 fi
 
 if [ "$1" = "uninstall" ] ; then
+    set +e
     if [ -n "$(${SUDO} docker ps -a -q -f name=cilium)" ]; then
         echo "Shutting down running Cilium agent"
-        ${SUDO} docker rm -f cilium || true
+        ${SUDO} docker rm -f cilium
     fi
     if [ -e /usr/bin/cilium ]; then
         echo "Removing /usr/bin/cilium"
@@ -48,12 +50,9 @@ if [ "$1" = "uninstall" ] ; then
     exit 0
 fi
 
-CILIUM_OPTS=" ${LB_SOCK_OPT} --enable-endpoint-health-checking=false"
+CILIUM_OPTS+=" --enable-endpoint-health-checking=false"
 if [ -n "$HOST_IP" ] ; then
     CILIUM_OPTS+=" --ipv4-node $HOST_IP"
-fi
-if [ -n "$CONFIG_OVERWRITES" ] ; then
-    CILIUM_OPTS+=" $CONFIG_OVERWRITES"
 fi
 
 DOCKER_OPTS=" -d --log-driver local --restart always"
@@ -78,7 +77,11 @@ while [ $cilium_started = false ]; do
     fi
 
     echo "Launching Cilium agent $CILIUM_IMAGE..."
-    ${SUDO} docker run --name cilium $DOCKER_OPTS $CILIUM_IMAGE cilium-agent $CILIUM_OPTS
+    ${SUDO} docker run \
+	    --name cilium \
+	    "$DOCKER_OPTS" \
+	    "$CILIUM_IMAGE" \
+	    cilium-agent "$CILIUM_OPTS"
 
     # Copy Cilium CLI
     ${SUDO} docker cp -L cilium:/usr/bin/cilium /usr/bin/cilium-dbg
@@ -100,7 +103,7 @@ while [ $cilium_started = false ]; do
     if [ "$cilium_started" = true ] ; then
         echo 'Cilium successfully started!'
     else
-        if [ $retries -eq 0 ]; then
+        if [ "$retries" -eq 0 ]; then
             >&2 echo 'Timeout waiting for Cilium to start, retries exhausted.'
             exit 1
         fi
@@ -111,7 +114,7 @@ done
 
 # Wait for kube-dns service to become available
 kubedns=""
-for ((i = 0 ; i < 24; i++)); do
+for ((i = 0 ; i < "$DNS_RETRIES"; i++)); do
     kubedns=$(${SUDO} cilium-dbg service list get -o jsonpath='{[?(@.spec.frontend-address.port==53)].spec.frontend-address.ip}')
     if [ -n "$kubedns" ] ; then
         break
@@ -126,7 +129,8 @@ if [ -n "$kubedns" ] ; then
     if grep "nameserver $kubedns" /etc/resolv.conf ; then
 	echo "kube-dns IP $kubedns already in /etc/resolv.conf"
     else
-	linkval=$(readlink /etc/resolv.conf) && echo "$linkval" | ${SUDO} tee /etc/resolv.conf.link || true
+	linkval="$(readlink /etc/resolv.conf || true)"
+	echo "$linkval" | ${SUDO} tee /etc/resolv.conf.link
 	if [[ "$linkval" == *"/systemd/"* ]] ; then
 	    echo "updating systemd resolved with kube-dns IP $kubedns"
 	    ${SUDO} mkdir -p /usr/lib/systemd/resolved.conf.d
@@ -144,7 +148,7 @@ EOF
 	    echo "Adding kube-dns IP $kubedns to /etc/resolv.conf"
 	    ${SUDO} cp /etc/resolv.conf /etc/resolv.conf.orig
 	    resolvconf="nameserver $kubedns\n$(cat /etc/resolv.conf)\nsearch ${namespace}.svc.cluster.local svc.cluster.local cluster.local\n"
-	    printf "$resolvconf" | ${SUDO} tee /etc/resolv.conf
+	    printf '%s' "$resolvconf" | ${SUDO} tee /etc/resolv.conf
 	fi
     fi
 else
