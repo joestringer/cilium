@@ -29,6 +29,7 @@ DOCKER_OPTS+=" --cgroupns=host"
 DOCKER_OPTS+=" --volume /var/lib/cilium/etcd:/var/lib/cilium/etcd"
 DOCKER_OPTS+=" --volume /var/run/cilium:/var/run/cilium"
 DOCKER_OPTS+=" --volume /var/run/cilium/netns:/var/run/cilium/netns"
+DOCKER_OPTS+=" --volume /opt/cni:/host/opt/cni"
 DOCKER_OPTS+=" --volume /boot:/boot"
 DOCKER_OPTS+=" --volume /lib/modules:/lib/modules"
 DOCKER_OPTS+=" --volume /sys/fs/bpf:/sys/fs/bpf"
@@ -36,6 +37,7 @@ DOCKER_OPTS+=" --volume /run/xtables.lock:/run/xtables.lock"
 
 uninstall() {
     set +e
+    ${SUDO} docker exec cilium /cni-uninstall.sh
     if [ -n "$(${SUDO} docker ps -a -q -f name=cilium)" ]; then
         echo "Shutting down running Cilium agent"
         ${SUDO} docker rm -f cilium
@@ -85,6 +87,7 @@ install() {
         # Copy Cilium CLI
         ${SUDO} docker cp -L cilium:/usr/bin/cilium /usr/bin/cilium-dbg
         ${SUDO} ln -fs /usr/bin/cilium-dbg /usr/bin/cilium
+        ${SUDO} docker exec cilium /install-plugin.sh
 
         # Wait for cilium agent to become available
         for ((i = 0 ; i < "$CILIUM_RETRIES"; i++)); do
