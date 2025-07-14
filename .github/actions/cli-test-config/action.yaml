@@ -36,6 +36,10 @@ inputs:
   tests:
     description: "Comma-separated test filters to determine which tests to run"
     required: false
+  timeout:
+    required: false
+    default: '15m'
+    description: 'Timeout for full connectivity test run'
 outputs:
   test_flags:
     description: "Generated values to be used with Cilium CLI"
@@ -57,6 +61,7 @@ runs:
           "\"--external-other-ip ${{ inputs.external-other-ip }}\"" \
           "\"--hubble=${{ inputs.hubble }}\"" \
           "\"--include-unsafe-tests=${{ inputs.include-unsafe-tests }}\"" \
+          "\"--timeout=${{ inputs.timeout }}\"" \
         )
 
         if [ -n "${{ inputs.external-target }}" ]; then
