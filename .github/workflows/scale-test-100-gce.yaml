@@ -108,25 +108,25 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] ; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
 
           # Run test against specific commit SHA if provided
-          if [[ '${{ inputs.extra-args }}' =~ sha=([a-f0-9]+) ]]; then
+          if [[ '${INPUTS_EXTRA_ARGS}' =~ sha=([a-f0-9]+) ]]; then
             SHA=${BASH_REMATCH[1]}
           fi
 
           # Retrieve the desired version from the arguments.
-          if [[ '${{ inputs.extra-args }}' =~ version=([-+.0-9a-z]+) ]]; then
+          if [[ '${INPUTS_EXTRA_ARGS}' =~ version=([-+.0-9a-z]+) ]]; then
             VERSION=${BASH_REMATCH[1]}
           else
             VERSION=""
           fi
 
           # Retrive number of workload nodes from the arguments.
-          if [[ '${{ inputs.extra-args }}' =~ nodes=([0-9+]+) ]]; then
+          if [[ '${INPUTS_EXTRA_ARGS}' =~ nodes=([0-9+]+) ]]; then
             WORKLOAD_NODES=${BASH_REMATCH[1]}
           else
             WORKLOAD_NODES=100
@@ -176,6 +176,9 @@ jobs:
           echo CLUSTER_NAME=${CLUSTER_NAME} >> $GITHUB_OUTPUT
           echo VERSION=${VERSION} >> $GITHUB_OUTPUT
           echo WORKLOAD_NODES=${WORKLOAD_NODES} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
       - name: Checkout pull request branch (NOT TRUSTED)
         if: ${{ steps.vars.outputs.version == '' }} # We don't need to checkout the PR if it's released version

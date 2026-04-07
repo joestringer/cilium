@@ -16,10 +16,13 @@ runs:
       id: service-account-create
       shell: bash
       run: |
-          cluster_name=${{ inputs.cluster_name }}
-          cluster_zone=${{ inputs.cluster_zone }}
+          cluster_name=${INPUTS_CLUSTER_NAME}
+          cluster_zone=${INPUTS_CLUSTER_ZONE}
           hash=$(gcloud container clusters describe $cluster_name --zone=$cluster_zone --format="value(id)")
           hash="${hash:0:8}"
           firewall_rule_name=gke-${cluster_name}-${hash}-allow-esp
 
           gcloud compute firewall-rules delete --quiet $firewall_rule_name
+      env:
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
+        INPUTS_CLUSTER_ZONE: ${{ inputs.cluster_zone }}

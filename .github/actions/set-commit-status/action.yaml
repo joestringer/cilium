@@ -16,9 +16,11 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        INPUTS_SHA: ${{ inputs.sha }}
+        INPUTS_STATUS: ${{ inputs.status }}
       run: |
-        gh api -X POST "/repos/${{ github.repository }}/statuses/${{ inputs.sha }}" \
-          -f state="${{ inputs.status }}" \
-          -f context="${{ github.workflow }}" \
+        gh api -X POST "/repos/${{ github.repository }}/statuses/${INPUTS_SHA}" \
+          -f state="${INPUTS_STATUS}" \
+          -f context="${GITHUB_WORKFLOW}" \
           -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 

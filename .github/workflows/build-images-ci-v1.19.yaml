@@ -412,8 +412,11 @@ jobs:
     steps:
     - name: Debug
       run: |
-        echo ${{ github.event.pull_request.user.login }}
-        echo ${{ github.event.event_name }}
+        echo ${GITHUB_EVENT_PULL_REQUEST_USER_LOGIN}
+        echo ${GITHUB_EVENT_EVENT_NAME}
+      env:
+        GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
+        GITHUB_EVENT_EVENT_NAME: ${{ github.event.event_name }}
 
   comment:
     name: Post test comment for Renovate PRs after images built

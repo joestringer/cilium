@@ -128,7 +128,7 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
@@ -137,6 +137,8 @@ jobs:
 
           echo connectivity_test_defaults=${CONNECTIVITY_TEST_DEFAULTS} >> $GITHUB_OUTPUT
           echo sha=${SHA} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
 
       - name: Create kind cluster
         uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0

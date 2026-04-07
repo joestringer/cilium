@@ -39,7 +39,7 @@ runs:
           instanceTypes:
            - t3a.medium
           desiredCapacity: 2
-          spot: ${{ inputs.spot }}
+          spot: ${INPUTS_SPOT}
           privateNetworking: true
           volumeType: "gp3"
           volumeSize: 25
@@ -51,7 +51,7 @@ runs:
           instanceTypes:
            - t4g.medium
           desiredCapacity: 1
-          spot: ${{ inputs.spot }}
+          spot: ${INPUTS_SPOT}
           privateNetworking: true
           volumeType: "gp3"
           volumeSize: 25
@@ -60,13 +60,15 @@ runs:
              value: "true"
              effect: "NoExecute"
         EOF
+      env:
+        INPUTS_SPOT: ${{ inputs.spot }}
 
     - name: Create nodegroup details from provided configuration
       if: ${{ inputs.node_groups_override != '' }}
       shell: bash
       run: |
         cat <<EOF > nodegroup-details.yaml
-        ${{ inputs.node_groups_override }}
+        ${INPUTS_NODE_GROUPS_OVERRIDE}
         EOF
 
         if [ "$(yq 'has("managedNodeGroups")' nodegroup-details.yaml)" != "true" ] \
@@ -74,6 +76,8 @@ runs:
           echo "node_groups_override must contain a non-empty 'managedNodeGroups' array"
           exit 1
         fi
+      env:
+        INPUTS_NODE_GROUPS_OVERRIDE: ${{ inputs.node_groups_override }}
 
     - name: Create EKS nodegroup
       shell: bash
@@ -83,20 +87,27 @@ runs:
         kind: ClusterConfig
 
         metadata:
-          name: ${{ inputs.cluster_name }}
-          region: ${{ inputs.region }}
-          version: "${{ inputs.version }}"
+          name: ${INPUTS_CLUSTER_NAME}
+          region: ${INPUTS_REGION}
+          version: "${INPUTS_VERSION}"
           tags:
-           usage: "${{ github.repository_owner }}-${{ github.event.repository.name }}"
-           owner: "${{ inputs.owner }}"
+           usage: "${{ github.repository_owner }}-${GITHUB_EVENT_REPOSITORY_NAME}"
+           owner: "${INPUTS_OWNER}"
 
         EOF
 
         cat ./nodegroup-details.yaml >> ./eks-nodegroups.yaml
 
         TIMEOUT_ARG=""
-        if [ -n "${{ inputs.timeout }}" ]; then
-          TIMEOUT_ARG="--timeout=${{ inputs.timeout }}"
+        if [ -n "${INPUTS_TIMEOUT}" ]; then
+          TIMEOUT_ARG="--timeout=${INPUTS_TIMEOUT}"
         fi
 
         eksctl create nodegroup -f ./eks-nodegroups.yaml ${TIMEOUT_ARG}
+      env:
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
+        INPUTS_REGION: ${{ inputs.region }}
+        INPUTS_VERSION: ${{ inputs.version }}
+        GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+        INPUTS_OWNER: ${{ inputs.owner }}
+        INPUTS_TIMEOUT: ${{ inputs.timeout }}

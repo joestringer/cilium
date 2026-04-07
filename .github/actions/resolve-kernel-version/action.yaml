@@ -16,6 +16,8 @@ runs:
       shell: bash
       run: |
         KERNEL_MAP=$(yq -o=json .github/actions/e2e/kernel-versions.yml)
-        FULL_KERNEL=$(echo "${KERNEL_MAP}" | jq -r --arg k "${{ inputs.kernel }}" '.kernels[$k] // $k')
+        FULL_KERNEL=$(echo "${KERNEL_MAP}" | jq -r --arg k "${INPUTS_KERNEL}" '.kernels[$k] // $k')
         echo "full=${FULL_KERNEL}" >> $GITHUB_OUTPUT
+      env:
+        INPUTS_KERNEL: ${{ inputs.kernel }}
 

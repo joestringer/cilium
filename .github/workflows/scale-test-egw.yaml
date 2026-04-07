@@ -160,7 +160,7 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] ; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
@@ -247,7 +247,7 @@ jobs:
                 }).listen(4241);
           EOF
 
-          OWNER="${{ github.ref_name }}"
+          OWNER="${GITHUB_REF_NAME}"
           OWNER="${OWNER//[.\/]/-}"
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] ; then
@@ -285,6 +285,8 @@ jobs:
           echo eks_region=${EKS_REGION} >> $GITHUB_OUTPUT
           echo eks_zone_1=${EKS_REGION}b >> $GITHUB_OUTPUT
           echo eks_zone_2=${EKS_REGION}c >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
 
       - name: Ensure EGW scale utils image is available
         shell: bash

@@ -19,8 +19,8 @@ runs:
       id: truncate
       shell: bash
       run: |
-        LABEL="${{ inputs.label }}"
-        MAX_LENGTH="${{ inputs.max_length }}"
+        LABEL="${INPUTS_LABEL}"
+        MAX_LENGTH="${INPUTS_MAX_LENGTH}"
 
         # Replace dots and slashes with hyphens for cloud provider compatibility
         LABEL="${LABEL//[.\/]/-}"
@@ -33,3 +33,6 @@ runs:
 
         echo "result=${LABEL}" >> $GITHUB_OUTPUT
         echo "Truncated label: ${LABEL}"
+      env:
+        INPUTS_LABEL: ${{ inputs.label }}
+        INPUTS_MAX_LENGTH: ${{ inputs.max_length }}

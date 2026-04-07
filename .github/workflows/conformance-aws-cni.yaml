@@ -112,7 +112,7 @@ jobs:
           # main -> event_name = schedule
           # other stable branches -> PR-number starting with v (e.g. v1.14)
           # shellcheck disable=SC2193
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.PR-number }}" == v* ]];then
+          if [[ "${{ github.event_name }}" == "schedule" || "${INPUTS_PR_NUMBER}" == v* ]];then
             cp aws-cni.json /tmp/matrix.json
           else
             jq '{ "include": [ .include[] | select(.default) ] }' aws-cni.json > /tmp/matrix.json
@@ -120,6 +120,8 @@ jobs:
 
           echo "Generated matrix:"
           cat /tmp/matrix.json
+        env:
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Set up AWS CLI credentials
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
@@ -226,23 +228,25 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
+          INPUTS_CONTEXT_REF: ${{ inputs.context-ref }}
         run: |
           # If PR-number isn't an integer then we use context-ref because branch isn't associated with a PR
-          if [[ "${{ inputs.PR-number }}" =~ ^[0-9]+$ ]]; then
-            BASE_BRANCH=$(gh pr view ${{ inputs.PR-number }} --json baseRefName -q .baseRefName)
+          if [[ "${INPUTS_PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+            BASE_BRANCH=$(gh pr view ${INPUTS_PR_NUMBER} --json baseRefName -q .baseRefName)
           else
-            BASE_BRANCH="${{ inputs.context-ref }}"
+            BASE_BRANCH="${INPUTS_CONTEXT_REF}"
           fi
           echo "base-branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
-          echo "Base branch for PR #${{ inputs.PR-number }}: $BASE_BRANCH"
+          echo "Base branch for PR #${INPUTS_PR_NUMBER}: $BASE_BRANCH"
 
       - name: Set up job variables
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            OWNER="${{ inputs.PR-number }}"
+            OWNER="${INPUTS_PR_NUMBER}"
           else
-            OWNER="${{ github.ref_name }}"
+            OWNER="${GITHUB_REF_NAME}"
             OWNER="${OWNER//[.\/]/-}"
           fi
 
@@ -288,6 +292,8 @@ jobs:
           echo sha=${{ steps.default_vars.outputs.sha }} >> $GITHUB_OUTPUT
           # shellcheck disable=SC2046
           echo owner=${OWNER} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Install kubectl
         run: |
@@ -407,7 +413,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             REF="${{ steps.get-base-branch.outputs.base-branch }}"
           else
-            REF="${{ github.ref_name }}"
+            REF="${GITHUB_REF_NAME}"
           fi
 
           echo "Triggering delete-eks-clusters workflow with:"

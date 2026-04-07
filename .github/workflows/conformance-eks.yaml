@@ -183,7 +183,7 @@ jobs:
           # main -> event_name = schedule
           # other stable branches -> PR-number starting with v (e.g. v1.14)
           # shellcheck disable=SC2193
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.PR-number }}" == v* ]];then
+          if [[ "${{ github.event_name }}" == "schedule" || "${INPUTS_PR_NUMBER}" == v* ]];then
             cp eks.json /tmp/matrix.json
           else
             jq '{ "include": [ .include[] | select(.default) ] }' eks.json > /tmp/matrix.json
@@ -191,6 +191,8 @@ jobs:
 
           echo "Generated matrix:"
           cat /tmp/matrix.json
+        env:
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Set up AWS CLI credentials
         uses: aws-actions/configure-aws-credentials@8df5847569e6427dd6c4fb1cf565c83acfa8afa7 # v6.0.0
@@ -204,7 +206,7 @@ jobs:
           cp /tmp/matrix.json /tmp/result.json
 
           # Check if ipsec is requested via extra-args
-          IPSEC=$(echo '${{ inputs.extra-args }}' | sed 's/^""$/{}/' | jq -r '.["ipsec"] // false')
+          IPSEC=$(echo '${INPUTS_EXTRA_ARGS}' | sed 's/^""$/{}/' | jq -r '.["ipsec"] // false')
           if [[ "$IPSEC" == "true" ]]; then
             echo "::notice::IPsec enabled - setting ipsec=true for all matrix entries"
             jq '.include |= map(. + {"ipsec": true})' /tmp/result.json > /tmp/result.json.tmp
@@ -212,7 +214,7 @@ jobs:
           fi
 
           # Check if KPR is requested via extra-args
-          KPR=$(echo '${{ inputs.extra-args }}' | jq -r '.["kpr"] // false')
+          KPR=$(echo '${INPUTS_EXTRA_ARGS}' | jq -r '.["kpr"] // false')
           if [[ "$KPR" == "true" ]]; then
             echo "::notice::KPR enabled - setting kpr=true for all matrix entries"
             jq '.include |= map(. + {"kpr": true})' /tmp/result.json > /tmp/result.json.tmp
@@ -234,6 +236,8 @@ jobs:
           cat /tmp/result.json
           echo "matrix=$(jq -c . < /tmp/result.json)" >> $GITHUB_OUTPUT
           echo "empty=$(jq '(.include | length) == 0' /tmp/result.json)" >> $GITHUB_OUTPUT
+        env:
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
   installation-and-connectivity:
     permissions:
@@ -300,23 +304,25 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
+          INPUTS_CONTEXT_REF: ${{ inputs.context-ref }}
         run: |
           # If PR-number isn't an integer then we use context-ref because branch isn't associated with a PR
-          if [[ "${{ inputs.PR-number }}" =~ ^[0-9]+$ ]]; then
-            BASE_BRANCH=$(gh pr view ${{ inputs.PR-number }} --json baseRefName -q .baseRefName)
+          if [[ "${INPUTS_PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+            BASE_BRANCH=$(gh pr view ${INPUTS_PR_NUMBER} --json baseRefName -q .baseRefName)
           else
-            BASE_BRANCH="${{ inputs.context-ref }}"
+            BASE_BRANCH="${INPUTS_CONTEXT_REF}"
           fi
           echo "base-branch=$BASE_BRANCH" >> $GITHUB_OUTPUT
-          echo "Base branch for PR #${{ inputs.PR-number }}: $BASE_BRANCH"
+          echo "Base branch for PR #${INPUTS_PR_NUMBER}: $BASE_BRANCH"
 
       - name: Set up job variables
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            OWNER="${{ inputs.PR-number }}"
+            OWNER="${INPUTS_PR_NUMBER}"
           else
-            OWNER="${{ github.ref_name }}"
+            OWNER="${GITHUB_REF_NAME}"
             OWNER="${OWNER//[.\/]/-}"
           fi
 
@@ -344,7 +350,7 @@ jobs:
             CILIUM_INSTALL_DEFAULTS+=" --helm-set eni.awsEnablePrefixDelegation=true"
           fi
 
-          ADV_FEAT=$(echo '${{ inputs.extra-args }}' | jq -r '.["advanced-features"] // false')
+          ADV_FEAT=$(echo '${INPUTS_EXTRA_ARGS}' | jq -r '.["advanced-features"] // false')
           if [[ "$ADV_FEAT" == "true" ]]; then
             CILIUM_INSTALL_DEFAULTS+=" --helm-set bpf.masquerade=true \
               --helm-set enableIPv4Masquerade=true \
@@ -352,7 +358,7 @@ jobs:
               --helm-set egressGateway.enabled=true"
           fi
 
-          WG=$(echo '${{ inputs.extra-args }}' | jq -r '.["wireguard"] // false')
+          WG=$(echo '${INPUTS_EXTRA_ARGS}' | jq -r '.["wireguard"] // false')
           if [[ "$WG" == "true" ]]; then
             CILIUM_INSTALL_DEFAULTS+=" --helm-set encryption.enabled=true --helm-set encryption.type=wireguard"
           fi
@@ -364,6 +370,9 @@ jobs:
           echo connectivity_test_defaults=${CONNECTIVITY_TEST_DEFAULTS} >> $GITHUB_OUTPUT
           echo sha=${{ steps.default_vars.outputs.sha }} >> $GITHUB_OUTPUT
           echo owner=${OWNER} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
       - name: Install kubectl
         run: |
@@ -517,7 +526,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event_name }}" = "workflow_call" ]; then
             REF="${{ steps.get-base-branch.outputs.base-branch }}"
           else
-            REF="${{ github.ref_name }}"
+            REF="${GITHUB_REF_NAME}"
           fi
 
           echo "Triggering delete-eks-clusters workflow with:"

@@ -40,39 +40,48 @@ runs:
         TAGS=""
         VERSION=""
 
-        if [[ -n "${{ inputs.tags }}" ]]; then
-          TAGS="--tags ${{ inputs.tags }}"
+        if [[ -n "${INPUTS_TAGS}" ]]; then
+          TAGS="--tags ${INPUTS_TAGS}"
         fi
 
-        if [[ -n "${{ inputs.version }}" ]]; then
-          VERSION="--kubernetes-version ${{ inputs.version }}"
+        if [[ -n "${INPUTS_VERSION}" ]]; then
+          VERSION="--kubernetes-version ${INPUTS_VERSION}"
         fi
 
         # Create group
         az group create \
-          --name ${{ inputs.cluster_name }} \
-          --location ${{ inputs.location }} \
+          --name ${INPUTS_CLUSTER_NAME} \
+          --location ${INPUTS_LOCATION} \
           $TAGS
 
         # Create AKS cluster
         az aks create \
-          --resource-group ${{ inputs.cluster_name }} \
-          --name ${{ inputs.cluster_name }} \
-          --location ${{ inputs.location }} \
+          --resource-group ${INPUTS_CLUSTER_NAME} \
+          --name ${INPUTS_CLUSTER_NAME} \
+          --location ${INPUTS_LOCATION} \
           $VERSION \
           --network-plugin none \
-          --node-count "$(( ${{ inputs.node_count }} + 2 ))" \
+          --node-count "$(( ${INPUTS_NODE_COUNT} + 2 ))" \
           --ip-families ipv4,ipv6 \
-          ${{ inputs.taints }} \
+          ${INPUTS_TAINTS} \
           --generate-ssh-keys \
           --api-server-authorized-ip-ranges ${{ steps.get-runner-ip.outputs.cidr }}
+      env:
+        INPUTS_TAGS: ${{ inputs.tags }}
+        INPUTS_VERSION: ${{ inputs.version }}
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
+        INPUTS_LOCATION: ${{ inputs.location }}
+        INPUTS_NODE_COUNT: ${{ inputs.node_count }}
+        INPUTS_TAINTS: ${{ inputs.taints }}
 
     - name: Get cluster credentials
       shell: bash
       run: |
         az aks get-credentials \
-          --resource-group ${{ inputs.cluster_name }} \
-          --name ${{ inputs.cluster_name }}
+          --resource-group ${INPUTS_CLUSTER_NAME} \
+          --name ${INPUTS_CLUSTER_NAME}
+      env:
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
 
     - name: Patch nodes without Cilium
       uses: ./.github/actions/nodes-without-cilium

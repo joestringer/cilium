@@ -82,17 +82,17 @@ runs:
       id: derive-config
       run: |
         DEFAULTS="--wait \
-            --chart-directory=${{ inputs.chart-dir }} \
+            --chart-directory=${INPUTS_CHART_DIR} \
             --helm-set=debug.enabled=true \
             --helm-set=debug.verbose=envoy \
             --helm-set=debug.metricsSamplingInterval=30s \
             --helm-set=hubble.eventBufferCapacity=65535 \
             --helm-set=cluster.name=default \
-            --helm-set=authentication.mutual.spire.enabled=${{ inputs.mutual-auth }} \
+            --helm-set=authentication.mutual.spire.enabled=${INPUTS_MUTUAL_AUTH} \
             --nodes-without-cilium \
-            --helm-set-string=kubeProxyReplacement=${{ inputs.kpr }} \
+            --helm-set-string=kubeProxyReplacement=${INPUTS_KPR} \
             --helm-set=l2NeighDiscovery.enabled=true \
-            --set='${{ inputs.misc }}' \
+            --set='${INPUTS_MISC}' \
             --set-string=extraEnv[0].name=CILIUM_FEATURE_METRICS_WITH_DEFAULTS \
             --set-string=extraEnv[0].value=true \
             --set-string=extraEnv[1].name=CILIUM_INVALID_METRIC_VALUE_DETECTOR \
@@ -118,114 +118,138 @@ runs:
             --set-string=hubble.relay.extraEnv[2].name=CILIUM_SLOG_DUP_ATTR_DETECTOR \
             --set-string=hubble.relay.extraEnv[2].value=true"
 
-          if [ -f "${{ inputs.chart-dir }}/../../../.github/actions/helm-default/ci-required-values.yaml" ]; then
-            DEFAULTS+=" --values=${{ inputs.chart-dir }}/../../../.github/actions/helm-default/ci-required-values.yaml"
+          if [ -f "${INPUTS_CHART_DIR}/../../../.github/actions/helm-default/ci-required-values.yaml" ]; then
+            DEFAULTS+=" --values=${INPUTS_CHART_DIR}/../../../.github/actions/helm-default/ci-required-values.yaml"
           fi
 
           IMAGE=""
-          if [ "${{ inputs.image-tag }}" != "" ]; then
+          if [ "${INPUTS_IMAGE_TAG}" != "" ]; then
             IMAGE="--helm-set=image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/cilium-ci \
             --helm-set=image.useDigest=false \
-            --helm-set=image.tag=${{ inputs.image-tag }} \
+            --helm-set=image.tag=${INPUTS_IMAGE_TAG} \
             --helm-set=operator.image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/operator \
             --helm-set=operator.image.suffix=-ci \
-            --helm-set=operator.image.tag=${{ inputs.image-tag }} \
+            --helm-set=operator.image.tag=${INPUTS_IMAGE_TAG} \
             --helm-set=operator.image.useDigest=false \
             --helm-set=hubble.relay.image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/hubble-relay-ci \
-            --helm-set=hubble.relay.image.tag=${{ inputs.image-tag }} \
+            --helm-set=hubble.relay.image.tag=${INPUTS_IMAGE_TAG} \
             --helm-set=hubble.relay.image.useDigest=false"
           fi
 
-          TUNNEL="--helm-set-string=tunnelProtocol=${{ inputs.tunnel }}"
-          if [ "${{ inputs.tunnel }}" == "disabled" ]; then
+          TUNNEL="--helm-set-string=tunnelProtocol=${INPUTS_TUNNEL}"
+          if [ "${INPUTS_TUNNEL}" == "disabled" ]; then
             TUNNEL="--helm-set-string=routingMode=native --helm-set-string=autoDirectNodeRoutes=true --helm-set-string=ipv4NativeRoutingCIDR=10.244.0.0/16"
             TUNNEL="${TUNNEL} --helm-set-string=ipv6NativeRoutingCIDR=fd00:10:244::/56"
           fi
 
           DEVICES=""
-          if [ "${{ inputs.devices }}" != "" ]; then
-            DEVICES="--helm-set=devices='${{ inputs.devices }}'"
+          if [ "${INPUTS_DEVICES}" != "" ]; then
+            DEVICES="--helm-set=devices='${INPUTS_DEVICES}'"
           fi
 
           LB_MODE=""
-          if [ "${{ inputs.lb-mode }}" != "" ]; then
-            LB_MODE="--helm-set-string=loadBalancer.mode=${{ inputs.lb-mode }}"
+          if [ "${INPUTS_LB_MODE}" != "" ]; then
+            LB_MODE="--helm-set-string=loadBalancer.mode=${INPUTS_LB_MODE}"
           fi
 
           ENDPOINT_ROUTES=""
-          if [ "${{ inputs.endpoint-routes }}" == "true" ]; then
+          if [ "${INPUTS_ENDPOINT_ROUTES}" == "true" ]; then
             ENDPOINT_ROUTES="--helm-set-string=endpointRoutes.enabled=true"
           fi
 
           IPV4=""
-          if [ "${{ inputs.ipv4 }}" == "false" ]; then
+          if [ "${INPUTS_IPV4}" == "false" ]; then
             IPV4="--helm-set=ipv4.enabled=false"
           fi
 
           IPV6=""
-          if [ "${{ inputs.ipv6 }}" != "false" ]; then
+          if [ "${INPUTS_IPV6}" != "false" ]; then
             IPV6="--helm-set=ipv6.enabled=true"
-            if [ "${{ inputs.underlay }}" == "ipv6" ]; then
+            if [ "${INPUTS_UNDERLAY}" == "ipv6" ]; then
               IPV6+=" --helm-set=underlayProtocol=ipv6"
             fi
           fi
 
           MASQ=""
-          if [ "${{ inputs.kpr }}" == "true" ]; then
+          if [ "${INPUTS_KPR}" == "true" ]; then
             # BPF-masq requires KPR=true.
             MASQ="--helm-set=bpf.masquerade=true"
           fi
 
           EGRESS_GATEWAY=""
-          if [ "${{ inputs.egress-gateway }}" == "true" ]; then
+          if [ "${INPUTS_EGRESS_GATEWAY}" == "true" ]; then
             EGRESS_GATEWAY="${{ env.EGRESS_GATEWAY_HELM_VALUES }}"
           fi
 
           LB_ACCELERATION=""
-          if [ "${{ inputs.lb-acceleration }}" != "" ]; then
-            LB_ACCELERATION="--helm-set=loadBalancer.acceleration=${{ inputs.lb-acceleration }}"
+          if [ "${INPUTS_LB_ACCELERATION}" != "" ]; then
+            LB_ACCELERATION="--helm-set=loadBalancer.acceleration=${INPUTS_LB_ACCELERATION}"
           fi
 
           ENCRYPT=""
-          if [ "${{ inputs.encryption }}" != "" ]; then
-            ENCRYPT="--helm-set=encryption.enabled=true --helm-set=encryption.type=${{ inputs.encryption }}"
-            if [ "${{ inputs.encryption-node }}" != "" ]; then
-              ENCRYPT+=" --helm-set=encryption.nodeEncryption=${{ inputs.encryption-node }}"
+          if [ "${INPUTS_ENCRYPTION}" != "" ]; then
+            ENCRYPT="--helm-set=encryption.enabled=true --helm-set=encryption.type=${INPUTS_ENCRYPTION}"
+            if [ "${INPUTS_ENCRYPTION_NODE}" != "" ]; then
+              ENCRYPT+=" --helm-set=encryption.nodeEncryption=${INPUTS_ENCRYPTION_NODE}"
             fi
-            if [ "${{ inputs.encryption-strict-egress }}" != "" ]; then
-              ENCRYPT+=" --helm-set=encryption.strictMode.egress.enabled=${{ inputs.encryption-strict-egress }}"
+            if [ "${INPUTS_ENCRYPTION_STRICT_EGRESS}" != "" ]; then
+              ENCRYPT+=" --helm-set=encryption.strictMode.egress.enabled=${INPUTS_ENCRYPTION_STRICT_EGRESS}"
               ENCRYPT+=" --helm-set=encryption.strictMode.egress.cidr=10.244.0.0/16"
             fi
-            if [ "${{ inputs.encryption-strict-ingress }}" != "" ]; then
-              ENCRYPT+=" --helm-set=encryption.strictMode.ingress.enabled=${{ inputs.encryption-strict-ingress }}"
+            if [ "${INPUTS_ENCRYPTION_STRICT_INGRESS}" != "" ]; then
+              ENCRYPT+=" --helm-set=encryption.strictMode.ingress.enabled=${INPUTS_ENCRYPTION_STRICT_INGRESS}"
             fi
           fi
 
           HOST_FW=""
-          if [ "${{ inputs.host-fw }}" == "true" ]; then
+          if [ "${INPUTS_HOST_FW}" == "true" ]; then
             HOST_FW="--helm-set=hostFirewall.enabled=true"
           fi
 
-          if [ "${{ inputs.kpr }}" == "true" ]; then
-            if [ "${{ inputs.ingress-controller }}" == "true" ]; then
+          if [ "${INPUTS_KPR}" == "true" ]; then
+            if [ "${INPUTS_INGRESS_CONTROLLER}" == "true" ]; then
               INGRESS_CONTROLLER="--helm-set=ingressController.enabled=true"
               INGRESS_CONTROLLER+=" --helm-set=ingressController.service.type=NodePort"
             fi
           fi
 
-          if [ "${{ inputs.ciliumendpointslice }}" == "true" ]; then
+          if [ "${INPUTS_CILIUMENDPOINTSLICE}" == "true" ]; then
             CILIUMENDPOINTSLICE="--helm-set=ciliumEndpointSlice.enabled=true"
           fi
 
           LOCAL_REDIRECT_POLICY=""
-          if [ "${{ inputs.local-redirect-policy }}" == "true" ]; then
+          if [ "${INPUTS_LOCAL_REDIRECT_POLICY}" == "true" ]; then
             LOCAL_REDIRECT_POLICY="--helm-set=localRedirectPolicies.enabled=true"
           fi
 
           BGP_CONTROL_PLANE=""
-          if [ "${{ inputs.bgp-control-plane }}" == "true" ]; then
+          if [ "${INPUTS_BGP_CONTROL_PLANE}" == "true" ]; then
             BGP_CONTROL_PLANE="${{ env.BGP_CONTROL_PLANE_HELM_VALUES }}"
           fi
 
           CONFIG="${DEFAULTS} ${IMAGE} ${TUNNEL} ${DEVICES} ${LB_MODE} ${ENDPOINT_ROUTES} ${IPV4} ${IPV6} ${MASQ} ${EGRESS_GATEWAY} ${ENCRYPT} ${HOST_FW} ${LB_ACCELERATION} ${INGRESS_CONTROLLER} ${CILIUMENDPOINTSLICE} ${LOCAL_REDIRECT_POLICY} ${BGP_CONTROL_PLANE}"
           echo "config=${CONFIG}" >> $GITHUB_OUTPUT
+      env:
+        INPUTS_CHART_DIR: ${{ inputs.chart-dir }}
+        INPUTS_MUTUAL_AUTH: ${{ inputs.mutual-auth }}
+        INPUTS_KPR: ${{ inputs.kpr }}
+        INPUTS_MISC: ${{ inputs.misc }}
+        INPUTS_IMAGE_TAG: ${{ inputs.image-tag }}
+        INPUTS_TUNNEL: ${{ inputs.tunnel }}
+        INPUTS_DEVICES: ${{ inputs.devices }}
+        INPUTS_LB_MODE: ${{ inputs.lb-mode }}
+        INPUTS_ENDPOINT_ROUTES: ${{ inputs.endpoint-routes }}
+        INPUTS_IPV4: ${{ inputs.ipv4 }}
+        INPUTS_IPV6: ${{ inputs.ipv6 }}
+        INPUTS_UNDERLAY: ${{ inputs.underlay }}
+        INPUTS_EGRESS_GATEWAY: ${{ inputs.egress-gateway }}
+        INPUTS_LB_ACCELERATION: ${{ inputs.lb-acceleration }}
+        INPUTS_ENCRYPTION: ${{ inputs.encryption }}
+        INPUTS_ENCRYPTION_NODE: ${{ inputs.encryption-node }}
+        INPUTS_ENCRYPTION_STRICT_EGRESS: ${{ inputs.encryption-strict-egress }}
+        INPUTS_ENCRYPTION_STRICT_INGRESS: ${{ inputs.encryption-strict-ingress }}
+        INPUTS_HOST_FW: ${{ inputs.host-fw }}
+        INPUTS_INGRESS_CONTROLLER: ${{ inputs.ingress-controller }}
+        INPUTS_CILIUMENDPOINTSLICE: ${{ inputs.ciliumendpointslice }}
+        INPUTS_LOCAL_REDIRECT_POLICY: ${{ inputs.local-redirect-policy }}
+        INPUTS_BGP_CONTROL_PLANE: ${{ inputs.bgp-control-plane }}

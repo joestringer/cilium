@@ -46,12 +46,15 @@ runs:
         openssl req -new -x509 -nodes -days 1 -subj "/CN=KVStore CA/" \
           -key $DIR/kvstore-ca-key.pem -out $DIR/kvstore-ca-crt.pem
         openssl req -new -x509 -nodes -days 1 -subj "/CN=server/" \
-          -addext "subjectAltName=$(printf DNS:${{ inputs.name }}%d, {1..${{ inputs.clusters }}})DNS:*.mesh.cilium.io" \
+          -addext "subjectAltName=$(printf DNS:${INPUTS_NAME}%d, {1..${INPUTS_CLUSTERS}})DNS:*.mesh.cilium.io" \
           -key $DIR/kvstore-server-key.pem -out $DIR/kvstore-server-crt.pem \
           -CA $DIR/kvstore-ca-crt.pem -CAkey $DIR/kvstore-ca-key.pem
         openssl req -new -x509 -nodes -days 1 -subj "/CN=client/" \
           -key $DIR/kvstore-client-key.pem -out $DIR/kvstore-client-crt.pem \
           -CA $DIR/kvstore-ca-crt.pem -CAkey $DIR/kvstore-ca-key.pem
+      env:
+        INPUTS_NAME: ${{ inputs.name }}
+        INPUTS_CLUSTERS: ${{ inputs.clusters }}
 
     - name: Start kvstore containers
       shell: bash
@@ -73,10 +76,15 @@ runs:
           --advertise-client-urls=https://0.0.0.0:2379 \
         "
 
-        for i in {1..${{ inputs.clusters }}}; do
-          docker run --name ${{ inputs.name }}$i --detach --network=${{ inputs.network }} \
-            ${ETCD_VOLUMES} ${{ inputs.etcd-image }} etcd ${ETCD_FLAGS}
+        for i in {1..${INPUTS_CLUSTERS}}; do
+          docker run --name ${INPUTS_NAME}$i --detach --network=${INPUTS_NETWORK} \
+            ${ETCD_VOLUMES} ${INPUTS_ETCD_IMAGE} etcd ${ETCD_FLAGS}
         done
+      env:
+        INPUTS_CLUSTERS: ${{ inputs.clusters }}
+        INPUTS_NAME: ${{ inputs.name }}
+        INPUTS_NETWORK: ${{ inputs.network }}
+        INPUTS_ETCD_IMAGE: ${{ inputs.etcd-image }}
 
     - name: Set kvstore connection parameters
       shell: bash
@@ -86,7 +94,7 @@ runs:
 
         echo "settings= \
           --set etcd.enabled=true \
-          --set etcd.endpoints={https://${{ inputs.name }}\${KVSTORE_ID}:2379} \
+          --set etcd.endpoints={https://${INPUTS_NAME}\${KVSTORE_ID}:2379} \
           --set etcd.ssl=true \
           --set identityAllocationMode=kvstore \
         " >> $GITHUB_OUTPUT
@@ -98,6 +106,8 @@ runs:
           --from-file etcd-client.crt=$DIR/kvstore-client-crt.pem \
           --from-file etcd-client.key=$DIR/kvstore-client-key.pem \
           > $SECRET_PATH
+      env:
+        INPUTS_NAME: ${{ inputs.name }}
 
     - name: Set clustermesh connection parameters
       shell: bash
@@ -106,8 +116,8 @@ runs:
         DIR=${{ steps.generate-certs.outputs.certs_dir }}
         SETTINGS=""
 
-        for i in {1..${{ inputs.clusters }}}; do
-          IP=$(docker inspect --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${{ inputs.name }}$i)
+        for i in {1..${INPUTS_CLUSTERS}}; do
+          IP=$(docker inspect --format '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${INPUTS_NAME}$i)
           SETTINGS="$SETTINGS \
             --set clustermesh.config.clusters[$(( i-1 ))].ips={$IP} \
             --set clustermesh.config.clusters[$(( i-1 ))].port=2379 \
@@ -118,3 +128,6 @@ runs:
         done
 
         echo "settings=$SETTINGS" >> $GITHUB_OUTPUT
+      env:
+        INPUTS_CLUSTERS: ${{ inputs.clusters }}
+        INPUTS_NAME: ${{ inputs.name }}

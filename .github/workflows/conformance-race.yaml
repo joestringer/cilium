@@ -86,8 +86,10 @@ jobs:
       - name: Merge extra-args with "detect-race"
         id: merge
         run: |
-          ARGS='${{ inputs.extra-args }}'
+          ARGS='${INPUTS_EXTRA_ARGS}'
           echo "extra-args=$(echo "${ARGS}" | jq -c '. + {"detect-race": true}')" >> "$GITHUB_OUTPUT"
+        env:
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
   conformance-ginkgo-race:
     name: Conformance Ginkgo with Race Detection

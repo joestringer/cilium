@@ -11,7 +11,7 @@ runs:
       shell: bash
       run: |
         echo "Updating IPsec secret"
-        cilium encrypt rotate-key --auth-algo ${{ inputs.key-algo }}
+        cilium encrypt rotate-key --auth-algo ${INPUTS_KEY_ALGO}
 
         new_key=$(cilium encrypt key-status)
         echo "New IPsec key: $new_key"
@@ -50,3 +50,5 @@ runs:
           echo "Waiting until key rotation completes (seeing $keys_in_use keys, expected $exp_nb_keys)"
           sleep 10s
         done
+      env:
+        INPUTS_KEY_ALGO: ${{ inputs.key-algo }}

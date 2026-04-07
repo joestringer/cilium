@@ -18,8 +18,8 @@ runs:
       id: service-account-create
       shell: bash
       run: |
-        kubectl --kubeconfig ${{ inputs.kubeconfig }} create serviceaccount -n kube-system cilium-cli
-        kubectl --kubeconfig ${{ inputs.kubeconfig }} create clusterrolebinding -n kube-system cilium-cli-binding --clusterrole cluster-admin --serviceaccount "kube-system:cilium-cli"
+        kubectl --kubeconfig ${INPUTS_KUBECONFIG} create serviceaccount -n kube-system cilium-cli
+        kubectl --kubeconfig ${INPUTS_KUBECONFIG} create clusterrolebinding -n kube-system cilium-cli-binding --clusterrole cluster-admin --serviceaccount "kube-system:cilium-cli"
         cat <<EOF | kubectl apply -f -
         apiVersion: v1
         kind: Secret
@@ -30,14 +30,14 @@ runs:
           annotations:
             kubernetes.io/service-account.name: cilium-cli
         EOF
-        kubectl --kubeconfig ${{ inputs.kubeconfig }} wait --for=jsonpath='{.data.token}' secrets/cilium-cli-secret -n kube-system
-        kubectl --kubeconfig ${{ inputs.kubeconfig }} wait --for=jsonpath='{.data.ca\.crt}' secrets/cilium-cli-secret -n kube-system
-        api_endpoint=$(kubectl --kubeconfig ${{ inputs.kubeconfig }} config view --minify --output jsonpath="{.clusters[*].cluster.server}")
-        cluster_name=$(kubectl --kubeconfig ${{ inputs.kubeconfig }} config view --minify -o jsonpath='{.clusters[].name}')
+        kubectl --kubeconfig ${INPUTS_KUBECONFIG} wait --for=jsonpath='{.data.token}' secrets/cilium-cli-secret -n kube-system
+        kubectl --kubeconfig ${INPUTS_KUBECONFIG} wait --for=jsonpath='{.data.ca\.crt}' secrets/cilium-cli-secret -n kube-system
+        api_endpoint=$(kubectl --kubeconfig ${INPUTS_KUBECONFIG} config view --minify --output jsonpath="{.clusters[*].cluster.server}")
+        cluster_name=$(kubectl --kubeconfig ${INPUTS_KUBECONFIG} config view --minify -o jsonpath='{.clusters[].name}')
         # Cilium CLI relies on context name to detect cluster flavor for GKE
-        context_name=$(kubectl --kubeconfig ${{ inputs.kubeconfig }} config view --minify -o jsonpath='{.contexts[].name}')
-        ca=$(kubectl --kubeconfig ${{ inputs.kubeconfig }} get secret -n kube-system cilium-cli-secret --output jsonpath='{.data.ca\.crt}')
-        token=$(kubectl --kubeconfig ${{ inputs.kubeconfig }} get secret -n kube-system cilium-cli-secret --output jsonpath='{.data.token}' | base64 --decode)
+        context_name=$(kubectl --kubeconfig ${INPUTS_KUBECONFIG} config view --minify -o jsonpath='{.contexts[].name}')
+        ca=$(kubectl --kubeconfig ${INPUTS_KUBECONFIG} get secret -n kube-system cilium-cli-secret --output jsonpath='{.data.ca\.crt}')
+        token=$(kubectl --kubeconfig ${INPUTS_KUBECONFIG} get secret -n kube-system cilium-cli-secret --output jsonpath='{.data.token}' | base64 --decode)
         DIR=$(mktemp -d)
         KUBECONFIG_PATH=$DIR/control-plane-kubeconfig.yaml
         cat <<EOF > $KUBECONFIG_PATH
@@ -61,3 +61,5 @@ runs:
         current-context: ${context_name}
         EOF
         echo "kubeconfig_path=$KUBECONFIG_PATH" >> $GITHUB_OUTPUT
+      env:
+        INPUTS_KUBECONFIG: ${{ inputs.kubeconfig }}

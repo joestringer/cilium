@@ -36,9 +36,16 @@ runs:
       shell: bash
       run: |
         bash ./.github/actions/kind-external-targets/action.sh \
-          ${{ inputs.lvh }} \
-          ${{ inputs.kind_network }} \
-          ${{ inputs.ipv4_external_target }} \
-          ${{ inputs.ipv4_other_external_target }} \
-          ${{ inputs.ipv6_external_target }} \
-          ${{ inputs.ipv6_other_external_target }}
+          ${INPUTS_LVH} \
+          ${INPUTS_KIND_NETWORK} \
+          ${INPUTS_IPV4_EXTERNAL_TARGET} \
+          ${INPUTS_IPV4_OTHER_EXTERNAL_TARGET} \
+          ${INPUTS_IPV6_EXTERNAL_TARGET} \
+          ${INPUTS_IPV6_OTHER_EXTERNAL_TARGET}
+      env:
+        INPUTS_LVH: ${{ inputs.lvh }}
+        INPUTS_KIND_NETWORK: ${{ inputs.kind_network }}
+        INPUTS_IPV4_EXTERNAL_TARGET: ${{ inputs.ipv4_external_target }}
+        INPUTS_IPV4_OTHER_EXTERNAL_TARGET: ${{ inputs.ipv4_other_external_target }}
+        INPUTS_IPV6_EXTERNAL_TARGET: ${{ inputs.ipv6_external_target }}
+        INPUTS_IPV6_OTHER_EXTERNAL_TARGET: ${{ inputs.ipv6_other_external_target }}

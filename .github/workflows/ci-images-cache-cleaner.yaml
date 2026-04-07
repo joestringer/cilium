@@ -30,11 +30,12 @@ jobs:
 
           REPO=${{ github.repository }}
           set +e
-          for cache in $(gh actions-cache list -R $REPO --key ${{ runner.os }}-go- -B ${{ github.event.repository.default_branch }} -L 100 | awk '{ print $1 }'); do
-            gh actions-cache delete ${cache} -R $REPO -B ${{ github.event.repository.default_branch }} --confirm || true
+          for cache in $(gh actions-cache list -R $REPO --key ${{ runner.os }}-go- -B ${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH} -L 100 | awk '{ print $1 }'); do
+            gh actions-cache delete ${cache} -R $REPO -B ${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH} --confirm || true
           done
-          for cache in $(gh actions-cache list -R $REPO --key ${{ runner.os }}-ccache- -B ${{ github.event.repository.default_branch }} -L 100 | awk '{ print $1 }'); do
-            gh actions-cache delete ${cache} -R $REPO -B ${{ github.event.repository.default_branch }} --confirm || true
+          for cache in $(gh actions-cache list -R $REPO --key ${{ runner.os }}-ccache- -B ${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH} -L 100 | awk '{ print $1 }'); do
+            gh actions-cache delete ${cache} -R $REPO -B ${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH} --confirm || true
           done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

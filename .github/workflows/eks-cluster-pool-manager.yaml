@@ -95,6 +95,7 @@ jobs:
           REGION: ${{ matrix.region }}
           MAX_AGE_HOURS: 6
           GH_TOKEN: ${{ github.token }}
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           set -e
 
@@ -134,7 +135,7 @@ jobs:
           fi
 
           # Filter clusters by usage tag and extract needed information
-          FILTERED_CLUSTERS=$(echo "${CLUSTERS_JSON}" | jq -r --arg tag_value "${{ github.repository_owner }}-${{ github.event.repository.name }}" \
+          FILTERED_CLUSTERS=$(echo "${CLUSTERS_JSON}" | jq -r --arg tag_value "${{ github.repository_owner }}-${GITHUB_EVENT_REPOSITORY_NAME}" \
             '[.[] | select(.tags.usage == $tag_value)] | if length == 0 then [] else . end')
 
           if [ "$(echo "${FILTERED_CLUSTERS}" | jq 'length')" -eq 0 ]; then
@@ -317,6 +318,7 @@ jobs:
       - name: Create S3 bucket if it doesn't exist
         env:
           REGION: ${{ matrix.region }}
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           set -e
 
@@ -353,7 +355,7 @@ jobs:
             aws s3api put-bucket-tagging \
               --bucket "${S3_BUCKET}" \
               --region "${REGION}" \
-              --tagging "TagSet=[{Key=usage,Value=${{ github.repository_owner }}-${{ github.event.repository.name }}},{Key=managed-by,Value=github-actions}]"
+              --tagging "TagSet=[{Key=usage,Value=${{ github.repository_owner }}-${GITHUB_EVENT_REPOSITORY_NAME}},{Key=managed-by,Value=github-actions}]"
 
             echo "Bucket ${S3_BUCKET} created successfully"
           fi
@@ -637,6 +639,7 @@ jobs:
       - name: Report pool status
         env:
           REGION: ${{ matrix.region }}
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: |
           set -e
 
@@ -666,7 +669,7 @@ jobs:
             jq -s '.')
 
           # Filter and display clusters by usage tag
-          FILTERED_CLUSTERS=$(echo "${CLUSTERS_JSON}" | jq -r --arg tag_value "${{ github.repository_owner }}-${{ github.event.repository.name }}" \
+          FILTERED_CLUSTERS=$(echo "${CLUSTERS_JSON}" | jq -r --arg tag_value "${{ github.repository_owner }}-${GITHUB_EVENT_REPOSITORY_NAME}" \
             '[.[] | select(.tags.usage == $tag_value)]')
 
           if [ "$(echo "${FILTERED_CLUSTERS}" | jq 'length')" -eq 0 ]; then

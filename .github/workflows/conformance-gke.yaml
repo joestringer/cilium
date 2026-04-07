@@ -163,14 +163,14 @@ jobs:
           # Use complete matrix in case of scheduled run
           # main -> event_name = schedule
           # other stable branches -> PR-number starting with v (e.g. v1.14)
-          VERSIONS=$(echo ${{ inputs.extra-args }} | awk -F'=' '{print $2}')
-          IPSEC=$(echo '${{ inputs.extra-args }}' | sed 's/^""$/{}/' | jq -r '.["ipsec"] // false')
-          WG=$(echo '${{ inputs.extra-args }}' | sed 's/^""$/{}/' | jq -r '.["wireguard"] // false')
-          KPR=$(echo '${{ inputs.extra-args }}' | sed 's/^""$/{}/' | jq -r '.["kpr"] // false')
-          ADV_FEAT=$(echo '${{ inputs.extra-args }}' | sed 's/^""$/{}/' | jq -r '.["advanced-features"] // false')
+          VERSIONS=$(echo ${INPUTS_EXTRA_ARGS} | awk -F'=' '{print $2}')
+          IPSEC=$(echo '${INPUTS_EXTRA_ARGS}' | sed 's/^""$/{}/' | jq -r '.["ipsec"] // false')
+          WG=$(echo '${INPUTS_EXTRA_ARGS}' | sed 's/^""$/{}/' | jq -r '.["wireguard"] // false')
+          KPR=$(echo '${INPUTS_EXTRA_ARGS}' | sed 's/^""$/{}/' | jq -r '.["kpr"] // false')
+          ADV_FEAT=$(echo '${INPUTS_EXTRA_ARGS}' | sed 's/^""$/{}/' | jq -r '.["advanced-features"] // false')
 
           # shellcheck disable=SC2193
-          if [[ "${{ github.event_name }}" == "schedule" || "${{ inputs.PR-number }}" == v* || "$VERSIONS" == "all" ]];then
+          if [[ "${{ github.event_name }}" == "schedule" || "${INPUTS_PR_NUMBER}" == v* || "$VERSIONS" == "all" ]];then
             cp gke.json /tmp/matrix.json
           else
             jq '{ "k8s": [ .k8s[] | select(.default) ], "config": .config}' gke.json > /tmp/matrix.json
@@ -205,6 +205,9 @@ jobs:
 
           echo "Generated matrix:"
           cat /tmp/matrix.json
+        env:
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Set up gcloud credentials
         id: 'auth'
@@ -224,7 +227,7 @@ jobs:
       - name: Filter Matrix
         id: set-matrix
         run: |
-          CHANNEL=$(echo ${{ inputs.extra-args }} | grep "channel" | awk -F'=' '{print $2}' | tr '[:lower:]' '[:upper:]')
+          CHANNEL=$(echo ${INPUTS_EXTRA_ARGS} | grep "channel" | awk -F'=' '{print $2}' | tr '[:lower:]' '[:upper:]')
           if [ "$CHANNEL" == "" ];then
             FILTER="channels.channel=REGULAR"
           elif [ "$CHANNEL" == "NONE" ];then
@@ -252,6 +255,8 @@ jobs:
 
           echo "matrix=$(jq -c . < /tmp/result.json)" >> $GITHUB_OUTPUT
           echo "empty=$(jq '(.k8s | length) == 0' /tmp/result.json)" >> $GITHUB_OUTPUT
+        env:
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
   wait-for-images:
     name: Wait for images

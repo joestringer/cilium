@@ -129,11 +129,11 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            CONTEXT_REF="${{ inputs.context-ref }}"
-            OWNER="${{ inputs.PR-number }}"
+            CONTEXT_REF="${INPUTS_CONTEXT_REF}"
+            OWNER="${INPUTS_PR_NUMBER}"
           else
             CONTEXT_REF="${{ github.sha }}"
-            OWNER="${{ github.ref_name }}"
+            OWNER="${GITHUB_REF_NAME}"
             OWNER="${OWNER//[.\/]/-}"
           fi
 
@@ -172,6 +172,9 @@ jobs:
 
           echo cilium_install_defaults=${CILIUM_INSTALL_DEFAULTS} >> $GITHUB_OUTPUT
           echo connectivity_test_defaults=${CONNECTIVITY_TEST_DEFAULTS} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_CONTEXT_REF: ${{ inputs.context-ref }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Generate conflist for each node
         run: |

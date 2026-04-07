@@ -72,53 +72,70 @@ runs:
           "--log-code-owners" \
           "--code-owners=${CILIUM_CLI_CODE_OWNERS_PATHS}" \
           "--exclude-code-owners=${CILIUM_CLI_EXCLUDE_OWNERS}" \
-          "--external-target=${{ inputs.external-target }}" \
-          "--external-cidr=${{ inputs.external-cidr }}" \
-          "--external-ip=${{ inputs.external-ip }}" \
-          "--external-other-ip=${{ inputs.external-other-ip }}" \
-          "--hubble=${{ inputs.hubble }}" \
+          "--external-target=${INPUTS_EXTERNAL_TARGET}" \
+          "--external-cidr=${INPUTS_EXTERNAL_CIDR}" \
+          "--external-ip=${INPUTS_EXTERNAL_IP}" \
+          "--external-other-ip=${INPUTS_EXTERNAL_OTHER_IP}" \
+          "--hubble=${INPUTS_HUBBLE}" \
         )
 
-        if [ -n "${{ inputs.external-cidrv6 }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-cidrv6=${{ inputs.external-cidrv6 }}")
+        if [ -n "${INPUTS_EXTERNAL_CIDRV6}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-cidrv6=${INPUTS_EXTERNAL_CIDRV6}")
         fi
-        if [ -n "${{ inputs.external-ipv6 }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-ipv6=${{ inputs.external-ipv6 }}")
+        if [ -n "${INPUTS_EXTERNAL_IPV6}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-ipv6=${INPUTS_EXTERNAL_IPV6}")
         fi
-        if [ -n "${{ inputs.external-other-ipv6 }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-other-ipv6=${{ inputs.external-other-ipv6 }}")
+        if [ -n "${INPUTS_EXTERNAL_OTHER_IPV6}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-other-ipv6=${INPUTS_EXTERNAL_OTHER_IPV6}")
         fi
-        if [ -n "${{ inputs.external-other-target }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-other-target=${{ inputs.external-other-target }}")
+        if [ -n "${INPUTS_EXTERNAL_OTHER_TARGET}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-other-target=${INPUTS_EXTERNAL_OTHER_TARGET}")
         fi
-        if [ -n "${{ inputs.external-target-ca-namespace }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-target-ca-namespace=${{ inputs.external-target-ca-namespace }}")
+        if [ -n "${INPUTS_EXTERNAL_TARGET_CA_NAMESPACE}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-target-ca-namespace=${INPUTS_EXTERNAL_TARGET_CA_NAMESPACE}")
         fi
-        if [ -n "${{ inputs.external-target-ca-name }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--external-target-ca-name=${{ inputs.external-target-ca-name }}")
+        if [ -n "${INPUTS_EXTERNAL_TARGET_CA_NAME}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--external-target-ca-name=${INPUTS_EXTERNAL_TARGET_CA_NAME}")
         fi
 
 
-        if [ "${{ inputs.external-target-fake-dns }}" == "true" ]; then
+        if [ "${INPUTS_EXTERNAL_TARGET_FAKE_DNS}" == "true" ]; then
           CONNECTIVITY_TEST_DEFAULTS+=("--external-target-fake-dns")
         fi
 
-        if [ "${{ inputs.include-unsafe-tests }}" == "true" ]; then
+        if [ "${INPUTS_INCLUDE_UNSAFE_TESTS}" == "true" ]; then
           CONNECTIVITY_TEST_DEFAULTS+=("--include-unsafe-tests")
         fi
 
-        if [ "${{ inputs.flow-validation }}" == "true" ]; then
+        if [ "${INPUTS_FLOW_VALIDATION}" == "true" ]; then
           CONNECTIVITY_TEST_DEFAULTS+=("--flow-validation=enabled")
         else
           CONNECTIVITY_TEST_DEFAULTS+=("--flow-validation=disabled")
         fi
 
-        if [ -n "${{ inputs.test-concurrency }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--test-concurrency=${{ inputs.test-concurrency }}")
+        if [ -n "${INPUTS_TEST_CONCURRENCY}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--test-concurrency=${INPUTS_TEST_CONCURRENCY}")
         fi
 
-        if [ -n "${{ inputs.tests }}" ]; then
-          CONNECTIVITY_TEST_DEFAULTS+=("--test=${{ inputs.tests }}")
+        if [ -n "${INPUTS_TESTS}" ]; then
+          CONNECTIVITY_TEST_DEFAULTS+=("--test=${INPUTS_TESTS}")
         fi
 
         echo test_flags=${CONNECTIVITY_TEST_DEFAULTS[*]} >> $GITHUB_OUTPUT
+      env:
+        INPUTS_EXTERNAL_TARGET: ${{ inputs.external-target }}
+        INPUTS_EXTERNAL_CIDR: ${{ inputs.external-cidr }}
+        INPUTS_EXTERNAL_IP: ${{ inputs.external-ip }}
+        INPUTS_EXTERNAL_OTHER_IP: ${{ inputs.external-other-ip }}
+        INPUTS_HUBBLE: ${{ inputs.hubble }}
+        INPUTS_EXTERNAL_CIDRV6: ${{ inputs.external-cidrv6 }}
+        INPUTS_EXTERNAL_IPV6: ${{ inputs.external-ipv6 }}
+        INPUTS_EXTERNAL_OTHER_IPV6: ${{ inputs.external-other-ipv6 }}
+        INPUTS_EXTERNAL_OTHER_TARGET: ${{ inputs.external-other-target }}
+        INPUTS_EXTERNAL_TARGET_CA_NAMESPACE: ${{ inputs.external-target-ca-namespace }}
+        INPUTS_EXTERNAL_TARGET_CA_NAME: ${{ inputs.external-target-ca-name }}
+        INPUTS_EXTERNAL_TARGET_FAKE_DNS: ${{ inputs.external-target-fake-dns }}
+        INPUTS_INCLUDE_UNSAFE_TESTS: ${{ inputs.include-unsafe-tests }}
+        INPUTS_FLOW_VALIDATION: ${{ inputs.flow-validation }}
+        INPUTS_TEST_CONCURRENCY: ${{ inputs.test-concurrency }}
+        INPUTS_TESTS: ${{ inputs.tests }}

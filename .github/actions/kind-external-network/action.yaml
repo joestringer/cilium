@@ -35,4 +35,6 @@ runs:
     - id: make_network
       shell: bash
       run: |
-        bash ./.github/actions/kind-external-network/action.sh ${{ inputs.lvh }}
+        bash ./.github/actions/kind-external-network/action.sh ${INPUTS_LVH}
+      env:
+        INPUTS_LVH: ${{ inputs.lvh }}

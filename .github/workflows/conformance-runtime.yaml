@@ -103,12 +103,14 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
 
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
 
       # Warning: since this is a privileged workflow, subsequent workflow job
       # steps must take care not to execute untrusted code.

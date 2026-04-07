@@ -79,8 +79,8 @@ runs:
         # Function to retry cosign signing with exponential backoff
         sign_with_retry() {
           local image="$1"
-          local max_attempts=${{ inputs.max_attempts }}
-          local delay=${{ inputs.initial_delay }}
+          local max_attempts=${INPUTS_MAX_ATTEMPTS}
+          local delay=${INPUTS_INITIAL_DELAY}
 
           for attempt in $(seq 1 $max_attempts); do
             echo "Attempt $attempt/$max_attempts: Signing $image"
@@ -101,7 +101,11 @@ runs:
           return 1
         }
 
-        sign_with_retry "${{ inputs.image }}"
+        sign_with_retry "${INPUTS_IMAGE}"
+      env:
+        INPUTS_MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+        INPUTS_INITIAL_DELAY: ${{ inputs.initial_delay }}
+        INPUTS_IMAGE: ${{ inputs.image }}
 
     - name: Attach SBOM Attestation
       if: ${{ inputs.attach_sbom == 'true' }}
@@ -111,8 +115,8 @@ runs:
         attest_with_retry() {
           local predicate="$1"
           local image="$2"
-          local max_attempts=${{ inputs.max_attempts }}
-          local delay=${{ inputs.initial_delay }}
+          local max_attempts=${INPUTS_MAX_ATTEMPTS}
+          local delay=${INPUTS_INITIAL_DELAY}
 
           for attempt in $(seq 1 $max_attempts); do
             echo "Attempt $attempt/$max_attempts: Attesting $image with $predicate"
@@ -133,6 +137,11 @@ runs:
           return 1
         }
 
-        image="${{ inputs.image }}"
-        sbom_file="./sbom_${{ inputs.sbom_name }}.spdx.json"
+        image="${INPUTS_IMAGE}"
+        sbom_file="./sbom_${INPUTS_SBOM_NAME}.spdx.json"
         attest_with_retry "${sbom_file}" "${image}"
+      env:
+        INPUTS_MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+        INPUTS_INITIAL_DELAY: ${{ inputs.initial_delay }}
+        INPUTS_IMAGE: ${{ inputs.image }}
+        INPUTS_SBOM_NAME: ${{ inputs.sbom_name }}

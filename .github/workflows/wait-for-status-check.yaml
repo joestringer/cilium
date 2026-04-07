@@ -41,10 +41,12 @@ jobs:
         if: ${{ inputs.if }}
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUTS_SHA: ${{ inputs.sha }}
+          INPUTS_LINT_WORKFLOWS: ${{ inputs.lint-workflows }}
         run: |
           # Parse input parameters
-          check_sha="${{ inputs.sha }}"
-          lint_workflows_str="${{ inputs.lint-workflows }}"
+          check_sha="${INPUTS_SHA}"
+          lint_workflows_str="${INPUTS_LINT_WORKFLOWS}"
           poll_interval="${{ inputs.poll-interval }}"
           timeout_minutes="${{ inputs.timeout-minutes }}"
 

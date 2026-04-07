@@ -116,17 +116,17 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${{ inputs.SHA }}"
-            CONTEXT_REF="${{ inputs.context-ref }}"
-            OWNER="${{ inputs.PR-number }}"
+            SHA="${INPUTS_SHA}"
+            CONTEXT_REF="${INPUTS_CONTEXT_REF}"
+            OWNER="${INPUTS_PR_NUMBER}"
           else
             SHA="${{ github.sha }}"
             CONTEXT_REF="${{ github.sha }}"
-            OWNER="${{ github.ref_name }}"
+            OWNER="${GITHUB_REF_NAME}"
             OWNER="${OWNER//[.\/]/-}"
           fi
 
-          DETECT_RACE=$(echo '${{ inputs.extra-args }}' | jq -r '."detect-race" // false | tostring')
+          DETECT_RACE=$(echo '${INPUTS_EXTRA_ARGS}' | jq -r '."detect-race" // false | tostring')
           IMAGE_TAG_SUFFIX=""
           if [ "${DETECT_RACE}" = "true" ]; then
             IMAGE_TAG_SUFFIX="-race"
@@ -137,6 +137,11 @@ jobs:
           echo owner=${OWNER} >> $GITHUB_OUTPUT
           echo detect-race=${DETECT_RACE} >> $GITHUB_OUTPUT
           echo image_tag_suffix=${IMAGE_TAG_SUFFIX} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
+          INPUTS_CONTEXT_REF: ${{ inputs.context-ref }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
   commit-status-start:
     name: Commit Status Start
@@ -278,7 +283,7 @@ jobs:
 
           # Parse flags from inputs and optionally restrict the matrix.
           DETECT_RACE="${{ needs.setup-vars.outputs.detect-race }}"
-          ALL_TESTS=$(echo '${{ inputs.extra-args }}' | jq -r '."all-tests" // false | tostring')
+          ALL_TESTS=$(echo '${INPUTS_EXTRA_ARGS}' | jq -r '."all-tests" // false | tostring')
           if [ "${DETECT_RACE}" = "true" ] && [ "${ALL_TESTS}" != "true" ]; then
             echo "::notice::Restricting matrix to focus 'f04-agent-policy-multi-node-1' (all-tests!=true) for quick data race detection on PRs."
             jq '
@@ -296,6 +301,8 @@ jobs:
           echo "Generated matrix:"
           cat /tmp/merged.json
           echo "matrix=$(jq -c . < /tmp/merged.json)" >> $GITHUB_OUTPUT
+        env:
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
   setup-and-test:
     needs: [setup-vars, build-ginkgo-binary, generate-matrix, wait-for-images]

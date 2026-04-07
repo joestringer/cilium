@@ -20,18 +20,23 @@ runs:
       if: ${{ always() }}
       shell: bash
       run: |
-        ${{ inputs.cilium-cli }} features status -o markdown --output-file="feature-status.md"
-        ${{ inputs.cilium-cli }} features status -o json --output-file="features-tested-${{ inputs.json-filename }}.json"
+        ${INPUTS_CILIUM_CLI} features status -o markdown --output-file="feature-status.md"
+        ${INPUTS_CILIUM_CLI} features status -o json --output-file="features-tested-${INPUTS_JSON_FILENAME}.json"
+      env:
+        INPUTS_CILIUM_CLI: ${{ inputs.cilium-cli }}
+        INPUTS_JSON_FILENAME: ${{ inputs.json-filename }}
 
     - name: Report summary for features enabled on the agent
       if: ${{ always() }}
       shell: bash
       run: |
         echo ""                                        >> "$GITHUB_STEP_SUMMARY"
-        echo "## ${{ inputs.title }}"                  >> "$GITHUB_STEP_SUMMARY"
+        echo "## ${INPUTS_TITLE}"                  >> "$GITHUB_STEP_SUMMARY"
         echo ""                                        >> "$GITHUB_STEP_SUMMARY"
         echo "<details>"                               >> "$GITHUB_STEP_SUMMARY"
         echo "  <summary>Click here to see</summary>"  >> "$GITHUB_STEP_SUMMARY"
         echo ""                                        >> "$GITHUB_STEP_SUMMARY"
         cat feature-status.md                          >> "$GITHUB_STEP_SUMMARY"
         echo "</details>"                              >> "$GITHUB_STEP_SUMMARY"
+      env:
+        INPUTS_TITLE: ${{ inputs.title }}

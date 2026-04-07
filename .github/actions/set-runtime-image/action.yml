@@ -12,9 +12,11 @@ runs:
       run: |
         CILIUM_RUNTIME_IMAGE=$(cat ${{ github.action_path }}/runtime-image.txt | tr '\n' ' ' | sed 's/"/\\"/g')
         # Verify provenance of the image with repository passed in parameter
-        if [[ $CILIUM_RUNTIME_IMAGE != ${{ inputs.repository }}* ]]; then
-          echo "Unknown provenance, runtime image should come from ${{ inputs.repository }}"
+        if [[ $CILIUM_RUNTIME_IMAGE != ${INPUTS_REPOSITORY}* ]]; then
+          echo "Unknown provenance, runtime image should come from ${INPUTS_REPOSITORY}"
           exit 1
         fi
         # Set the runtime image into github env once everything is verified
         echo "CILIUM_RUNTIME_IMAGE=$CILIUM_RUNTIME_IMAGE" >> "$GITHUB_ENV"
+      env:
+        INPUTS_REPOSITORY: ${{ inputs.repository }}

@@ -19,9 +19,12 @@ jobs:
     steps:
     - name: Debug
       run: |
-        echo ${{ github.event.pull_request.user.login }}
+        echo ${GITHUB_EVENT_PULL_REQUEST_USER_LOGIN}
         echo ${{ github.triggering_actor }}
-        echo ${{ github.event.requested_reviewer.login }}
+        echo ${GITHUB_EVENT_REQUESTED_REVIEWER_LOGIN}
+      env:
+        GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
+        GITHUB_EVENT_REQUESTED_REVIEWER_LOGIN: ${{ github.event.requested_reviewer.login }}
 
   approve:
     name: Approve
@@ -34,9 +37,12 @@ jobs:
     steps:
     - name: Debug
       run: |
-        echo ${{ github.event.pull_request.user.login }}
+        echo ${GITHUB_EVENT_PULL_REQUEST_USER_LOGIN}
         echo ${{ github.triggering_actor }}
-        echo ${{ github.event.requested_reviewer.login }}
+        echo ${GITHUB_EVENT_REQUESTED_REVIEWER_LOGIN}
+      env:
+        GITHUB_EVENT_PULL_REQUEST_USER_LOGIN: ${{ github.event.pull_request.user.login }}
+        GITHUB_EVENT_REQUESTED_REVIEWER_LOGIN: ${{ github.event.requested_reviewer.login }}
 
     - name: Approve PR
       # Approve the PR if all the following conditions are true:

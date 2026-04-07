@@ -13,10 +13,12 @@ runs:
       if: ${{ success() && steps.install-cilium.outcome != 'skipped' }}
       run: |
         for pod in $(kubectl get -n kube-system pods -l k8s-app=cilium -o name); do
-          out="metrics-${{ inputs.job }}-${pod#pod/}.html"
+          out="metrics-${INPUTS_JOB}-${pod#pod/}.html"
           kubectl exec -n kube-system $pod -- cilium-dbg shell -- metrics/html > "$out"
         done
       shell: bash {0}
+      env:
+        INPUTS_JOB: ${{ inputs.job }}
 
     - name: Upload metrics
       if: ${{ success() && steps.install-cilium.outcome != 'skipped' }}

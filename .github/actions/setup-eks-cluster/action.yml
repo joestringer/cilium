@@ -54,9 +54,9 @@ runs:
         set -e
 
         # Compute SHA256 hash of addons to differentiate pools by addon configuration
-        ADDONS_HASH=$(echo -n "${{ inputs.addons }} ${{ inputs.zones }}" | sha256sum | cut -c1-8)
+        ADDONS_HASH=$(echo -n "${INPUTS_ADDONS} ${INPUTS_ZONES}" | sha256sum | cut -c1-8)
 
-        KUBECONFIG_PATH="${{ inputs.region }}-${{ inputs.version }}-${ADDONS_HASH}"
+        KUBECONFIG_PATH="${INPUTS_REGION}-${INPUTS_VERSION}-${ADDONS_HASH}"
         # Sanitize KUBECONFIG_PATH name for S3 key
         KUBECONFIG_PATH_SAFE="${KUBECONFIG_PATH//[.\/]/-}"
         S3_PREFIX="kubeconfig-pool/${KUBECONFIG_PATH_SAFE}/"
@@ -67,7 +67,7 @@ runs:
         echo "Looking for kubeconfig in s3://${S3_BUCKET}/${S3_PREFIX}"
 
         # List available kubeconfigs in the pool
-        AVAILABLE_CONFIGS=$(aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}" --region ${{ inputs.region }} | awk '{print $4}' || echo "")
+        AVAILABLE_CONFIGS=$(aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}" --region ${INPUTS_REGION} | awk '{print $4}' || echo "")
 
         if [ -n "$AVAILABLE_CONFIGS" ]; then
           # Iterate through available kubeconfigs and try to claim each one until successful
@@ -85,11 +85,11 @@ runs:
 
             # Atomically claim by moving the file to a unique location
             # The first job to successfully move will win; others will fail on source not found
-            if aws s3 mv "s3://${S3_BUCKET}/${S3_PREFIX}${KUBECONFIG_KEY}" "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${{ inputs.region }} 2>/dev/null; then
+            if aws s3 mv "s3://${S3_BUCKET}/${S3_PREFIX}${KUBECONFIG_KEY}" "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${INPUTS_REGION} 2>/dev/null; then
               # We won the race - now download from our claimed location
-              if aws s3 cp "s3://${S3_BUCKET}/${CLAIM_KEY}" "${KUBECONFIG_PATH}" --region ${{ inputs.region }}; then
+              if aws s3 cp "s3://${S3_BUCKET}/${CLAIM_KEY}" "${KUBECONFIG_PATH}" --region ${INPUTS_REGION}; then
                 # Clean up the claimed file
-                aws s3 rm "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${{ inputs.region }} || true
+                aws s3 rm "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${INPUTS_REGION} || true
                 echo "Successfully claimed kubeconfig: ${KUBECONFIG_KEY}"
 
                 # Extract cluster name from filename (format: cluster-name-timestamp.yaml)
@@ -122,7 +122,7 @@ runs:
               else
                 echo "Failed to download claimed kubeconfig, trying next available config"
                 # Clean up the claimed file even if download failed
-                aws s3 rm "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${{ inputs.region }} || true
+                aws s3 rm "s3://${S3_BUCKET}/${CLAIM_KEY}" --region ${INPUTS_REGION} || true
                 rm -f "${KUBECONFIG_PATH}"
                 continue
               fi
@@ -135,24 +135,29 @@ runs:
 
         echo "found=false" >> $GITHUB_OUTPUT
         echo "No kubeconfig found in pool"
+      env:
+        INPUTS_ADDONS: ${{ inputs.addons }}
+        INPUTS_ZONES: ${{ inputs.zones }}
+        INPUTS_REGION: ${{ inputs.region }}
+        INPUTS_VERSION: ${{ inputs.version }}
 
     - name: Create EKS cluster if not from pool
       if: ${{ inputs.create-cluster == 'true' || steps.get-from-pool.outputs.found != 'true' }}
       shell: bash
       run: |
-        echo "Creating new EKS cluster: ${{ inputs.cluster_name }}"
+        echo "Creating new EKS cluster: ${INPUTS_CLUSTER_NAME}"
 
         cat <<EOF > eks-config.yaml
         apiVersion: eksctl.io/v1alpha5
         kind: ClusterConfig
 
         metadata:
-          name: ${{ inputs.cluster_name }}
-          region: ${{ inputs.region }}
-          version: "${{ inputs.version }}"
+          name: ${INPUTS_CLUSTER_NAME}
+          region: ${INPUTS_REGION}
+          version: "${INPUTS_VERSION}"
           tags:
-           usage: "${{ github.repository_owner }}-${{ github.event.repository.name }}"
-           owner: "${{ inputs.owner }}"
+           usage: "${{ github.repository_owner }}-${GITHUB_EVENT_REPOSITORY_NAME}"
+           owner: "${INPUTS_OWNER}"
 
         vpc:
           clusterEndpoints:
@@ -165,18 +170,26 @@ runs:
         addons:
         EOF
 
-        for addon in ${{ inputs.addons }}; do
+        for addon in ${INPUTS_ADDONS}; do
           echo "- name: $addon" >> eks-config.yaml
         done
 
-        if [[ -n "${{ inputs.zones }}"  ]]; then
+        if [[ -n "${INPUTS_ZONES}"  ]]; then
           echo "availabilityZones:" >> eks-config.yaml
-          for zone in ${{ inputs.zones }}; do
+          for zone in ${INPUTS_ZONES}; do
             echo "- $zone" >> eks-config.yaml
           done
         fi
 
         eksctl create cluster -f ./eks-config.yaml
+      env:
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
+        INPUTS_REGION: ${{ inputs.region }}
+        INPUTS_VERSION: ${{ inputs.version }}
+        GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+        INPUTS_OWNER: ${{ inputs.owner }}
+        INPUTS_ADDONS: ${{ inputs.addons }}
+        INPUTS_ZONES: ${{ inputs.zones }}
 
     - name: Set cluster info output
       id: cluster-info
@@ -192,11 +205,13 @@ runs:
           mkdir -p ~/.kube
           cp "${{ steps.get-from-pool.outputs.kubeconfig_path }}" ~/.kube/config
         else
-          echo "Created new cluster: ${{ inputs.cluster_name }}"
-          echo "cluster_name=${{ inputs.cluster_name }}" >> $GITHUB_OUTPUT
+          echo "Created new cluster: ${INPUTS_CLUSTER_NAME}"
+          echo "cluster_name=${INPUTS_CLUSTER_NAME}" >> $GITHUB_OUTPUT
           echo "kubeconfig_path=~/.kube/config" >> $GITHUB_OUTPUT
           echo "new_cluster_created=true" >> $GITHUB_OUTPUT
         fi
+      env:
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster_name }}
 
     - name: Trigger pool manager to replenish clusters
       continue-on-error: true

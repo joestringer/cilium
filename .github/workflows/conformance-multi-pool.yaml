@@ -176,11 +176,11 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            CONTEXT_REF="${{ inputs.context-ref }}"
-            OWNER="${{ inputs.PR-number }}"
+            CONTEXT_REF="${INPUTS_CONTEXT_REF}"
+            OWNER="${INPUTS_PR_NUMBER}"
           else
             CONTEXT_REF="${{ github.sha }}"
-            OWNER="${{ github.ref_name }}"
+            OWNER="${GITHUB_REF_NAME}"
             OWNER="${OWNER//[.\/]/-}"
           fi
 
@@ -251,6 +251,9 @@ jobs:
           echo connectivity_test_defaults=${CONNECTIVITY_TEST_DEFAULTS} >> $GITHUB_OUTPUT
 
           echo kind_svc_cidr=${KIND_SVC_CIDR} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_CONTEXT_REF: ${{ inputs.context-ref }}
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
       - name: Generate Kind configuration files
         run: |

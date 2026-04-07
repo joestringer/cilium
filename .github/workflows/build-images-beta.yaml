@@ -96,10 +96,13 @@ jobs:
         id: tag-in-repositories
         shell: bash
         run: |
-          if docker buildx imagetools inspect quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/${{ matrix.name }}-${{ github.event.inputs.suffix }}:${{ github.event.inputs.tag }} &>/dev/null; then
+          if docker buildx imagetools inspect quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/${{ matrix.name }}-${GITHUB_EVENT_INPUTS_SUFFIX}:${GITHUB_EVENT_INPUTS_TAG} &>/dev/null; then
             echo "Tag already exists!"
             exit 1
           fi
+        env:
+          GITHUB_EVENT_INPUTS_SUFFIX: ${{ github.event.inputs.suffix }}
+          GITHUB_EVENT_INPUTS_TAG: ${{ github.event.inputs.tag }}
 
       - name: Checkout Source Code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -134,8 +137,11 @@ jobs:
           mkdir -p image-digest/
           echo "## ${{ matrix.name }}" > image-digest/${{ matrix.name }}.txt
           echo "" >> image-digest/${{ matrix.name }}.txt
-          echo "\`quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/${{ matrix.name }}-${{ github.event.inputs.suffix }}:${{ github.event.inputs.tag }}@${{ steps.docker_build_release.outputs.digest }}\`" >> image-digest/${{ matrix.name }}.txt
+          echo "\`quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/${{ matrix.name }}-${GITHUB_EVENT_INPUTS_SUFFIX}:${GITHUB_EVENT_INPUTS_TAG}@${{ steps.docker_build_release.outputs.digest }}\`" >> image-digest/${{ matrix.name }}.txt
           echo "" >> image-digest/${{ matrix.name }}.txt
+        env:
+          GITHUB_EVENT_INPUTS_SUFFIX: ${{ github.event.inputs.suffix }}
+          GITHUB_EVENT_INPUTS_TAG: ${{ github.event.inputs.tag }}
 
       # Upload artifact digests
       - name: Upload artifact digests

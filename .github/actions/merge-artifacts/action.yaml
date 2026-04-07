@@ -30,12 +30,13 @@ runs:
       shell: bash
       env:
         ARTIFACTS_FILE: "artifacts_list_${{ github.run_id }}_${{ github.run_number }}.json"
+        INPUTS_TOKEN: ${{ inputs.token }}
       run: |
         echo "artifacts_file=${{ env.ARTIFACTS_FILE }}" >> $GITHUB_OUTPUT
         if [ ! -f ${{ env.ARTIFACTS_FILE }} ];then
           echo "Fetching artifacts"
           curl --fail --show-error --silent \
-                -H "Authorization: token ${{ inputs.token }}" \
+                -H "Authorization: token ${INPUTS_TOKEN}" \
                 -H "Accept: application/vnd.github.v3+json" \
                 "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
                 | jq -r '.artifacts[] | .name' > ${{ env.ARTIFACTS_FILE }}
@@ -44,14 +45,16 @@ runs:
       id: filter_artifacts
       shell: bash
       run: |
-        pattern="${{ inputs.pattern }}"
+        pattern="${INPUTS_PATTERN}"
         regex="^${pattern//\*/.*}$"
-        echo "Filtered Artifacts starts with ${{ inputs.pattern }}"
+        echo "Filtered Artifacts starts with ${INPUTS_PATTERN}"
         if grep -E "$regex" ${{ steps.list_artifacts.outputs.artifacts_file }}; then
           echo "exists=true" >> $GITHUB_OUTPUT
         else
-          echo "::warning::No matching ${{ inputs.pattern }} artifacts found."
+          echo "::warning::No matching ${INPUTS_PATTERN} artifacts found."
         fi
+      env:
+        INPUTS_PATTERN: ${{ inputs.pattern }}
     - name: Merge ${{ inputs.name }}
       if: ${{ steps.filter_artifacts.outputs.exists == 'true' }}
       uses: actions/upload-artifact/merge@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

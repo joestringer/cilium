@@ -110,7 +110,7 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] ; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
@@ -150,6 +150,8 @@ jobs:
           echo SHA=${SHA} >> $GITHUB_OUTPUT
           echo cilium_install_defaults=${CILIUM_INSTALL_DEFAULTS} >> $GITHUB_OUTPUT
           echo CLUSTER_NAME=${CLUSTER_NAME} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
 
       - name: Wait for images to be available
         timeout-minutes: 30

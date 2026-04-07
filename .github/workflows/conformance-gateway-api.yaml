@@ -115,7 +115,7 @@ jobs:
         id: set-matrix
         run: |
           event_name='${{ github.event_name }}'
-          pr_number='${{ inputs.PR-number }}'
+          pr_number='${INPUTS_PR_NUMBER}'
           MATRIX='{
             "include": [
               {
@@ -148,6 +148,8 @@ jobs:
           fi
 
           echo "matrix=${RESULT}" >> "$GITHUB_OUTPUT"
+        env:
+          INPUTS_PR_NUMBER: ${{ inputs.PR-number }}
 
   gateway-api-conformance-test:
     name: Gateway API Conformance Test

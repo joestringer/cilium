@@ -49,27 +49,27 @@ runs:
         VERSION=""
         TAINTS=""
 
-        if [[ -n "${{ inputs.labels }}" ]]; then
-          LABELS="--labels ${{ inputs.labels }}"
+        if [[ -n "${INPUTS_LABELS}" ]]; then
+          LABELS="--labels ${INPUTS_LABELS}"
         fi
 
-        if [[ -n "${{ inputs.cluster-version }}" ]]; then
-          VERSION="--cluster-version ${{ inputs.cluster-version }}"
+        if [[ -n "${INPUTS_CLUSTER_VERSION}" ]]; then
+          VERSION="--cluster-version ${INPUTS_CLUSTER_VERSION}"
         fi
 
-        if [[ -n "${{ inputs.node-taints }}" ]]; then
-          TAINTS="--node-taints ${{ inputs.node-taints }}"
+        if [[ -n "${INPUTS_NODE_TAINTS}" ]]; then
+          TAINTS="--node-taints ${INPUTS_NODE_TAINTS}"
         fi
 
-        gcloud container clusters create "${{ inputs.cluster-name }}" \
-          --zone "${{ inputs.zone }}" \
+        gcloud container clusters create "${INPUTS_CLUSTER_NAME}" \
+          --zone "${INPUTS_ZONE}" \
           --enable-ip-alias \
           --create-subnetwork="range=/26" \
           --cluster-ipv4-cidr="/21" \
           --services-ipv4-cidr="/24" \
           --image-type COS_CONTAINERD \
-          --num-nodes "$(( ${{ inputs.nodes }} + 2 ))" \
-          --machine-type "${{ inputs.machine-type }}" \
+          --num-nodes "$(( ${INPUTS_NODES} + 2 ))" \
+          --machine-type "${INPUTS_MACHINE_TYPE}" \
           --disk-type pd-standard \
           --disk-size 20GB \
           --no-enable-insecure-kubelet-readonly-port \
@@ -79,8 +79,16 @@ runs:
           $LABELS \
           $TAINTS
 
-        native_cidr=$(gcloud container clusters describe "${{ inputs.cluster-name }}" --zone "${{ inputs.zone }}" --format 'value(clusterIpv4Cidr)')
+        native_cidr=$(gcloud container clusters describe "${INPUTS_CLUSTER_NAME}" --zone "${INPUTS_ZONE}" --format 'value(clusterIpv4Cidr)')
         echo native_cidr=${native_cidr} >> $GITHUB_OUTPUT
+      env:
+        INPUTS_LABELS: ${{ inputs.labels }}
+        INPUTS_CLUSTER_VERSION: ${{ inputs.cluster-version }}
+        INPUTS_NODE_TAINTS: ${{ inputs.node-taints }}
+        INPUTS_CLUSTER_NAME: ${{ inputs.cluster-name }}
+        INPUTS_ZONE: ${{ inputs.zone }}
+        INPUTS_NODES: ${{ inputs.nodes }}
+        INPUTS_MACHINE_TYPE: ${{ inputs.machine-type }}
 
     - name: Patch nodes without Cilium
       uses: ./.github/actions/nodes-without-cilium

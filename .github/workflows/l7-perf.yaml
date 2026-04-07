@@ -131,18 +131,18 @@ jobs:
         id: vars
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] ; then
-            SHA="${{ inputs.SHA }}"
+            SHA="${INPUTS_SHA}"
           else
             SHA="${{ github.sha }}"
           fi
 
           # Run test against specific commit SHA if provided
-          if [[ '${{ inputs.extra-args }}' =~ sha=([a-f0-9]+) ]]; then
+          if [[ '${INPUTS_EXTRA_ARGS}' =~ sha=([a-f0-9]+) ]]; then
             SHA=${BASH_REMATCH[1]}
           fi
 
           # Retrieve the desired version from the arguments.
-          if [[ '${{ inputs.extra-args }}' =~ version=([-+.0-9a-z]+) ]]; then
+          if [[ '${INPUTS_EXTRA_ARGS}' =~ version=([-+.0-9a-z]+) ]]; then
             VERSION=${BASH_REMATCH[1]}
           else
             VERSION=""
@@ -172,7 +172,7 @@ jobs:
             CILIUM_INSTALL_DEFAULTS="--version ${VERSION} ${CILIUM_INSTALL_DEFAULTS}"
           fi
 
-          OWNER="${{ github.ref_name }}"
+          OWNER="${GITHUB_REF_NAME}"
           OWNER="${OWNER//[.\/]/-}"
 
           if [ "${{ github.event_name }}" == "workflow_dispatch" ] ; then
@@ -209,6 +209,9 @@ jobs:
 
           echo num_test_nodes=${NUM_TEST_NODES} >> $GITHUB_OUTPUT
           echo num_client_nodes=${NUM_CLIENT_NODES} >> $GITHUB_OUTPUT
+        env:
+          INPUTS_SHA: ${{ inputs.SHA }}
+          INPUTS_EXTRA_ARGS: ${{ inputs.extra-args }}
 
       # Warning: since this is a privileged workflow, subsequent workflow job
       # steps must take care not to execute untrusted code.

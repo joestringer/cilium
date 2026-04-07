@@ -38,37 +38,46 @@ runs:
     - name: Perform Conn Disrupt Test
       shell: bash
       run: |
-        if [[ -n "${{ inputs.tests }}" ]]; then
-          TEST_ARG="${{ inputs.tests }}"
+        if [[ -n "${INPUTS_TESTS}" ]]; then
+          TEST_ARG="${INPUTS_TESTS}"
         else
           TEST_ARG="no-interrupted-connections,no-ipsec-xfrm-error"
           EXTRA_ARG="--include-conn-disrupt-test --include-conn-disrupt-test-egw"
-          if [[ "${{ inputs.skip-include-conn-disrupt-test-ns-traffic }}" != "true" ]]; then
+          if [[ "${INPUTS_SKIP_INCLUDE_CONN_DISRUPT_TEST_NS_TRAFFIC}" != "true" ]]; then
             EXTRA_ARG="${EXTRA_ARG} --include-conn-disrupt-test-ns-traffic"
           fi
         fi
-        if [[ "${{ inputs.full-test }}" == "true" ]]; then
+        if [[ "${INPUTS_FULL_TEST}" == "true" ]]; then
           TEST_ARG=""
           EXTRA_ARG="--include-conn-disrupt-test --include-conn-disrupt-test-egw"
-          if [[ "${{ inputs.skip-include-conn-disrupt-test-ns-traffic }}" != "true" ]]; then
+          if [[ "${INPUTS_SKIP_INCLUDE_CONN_DISRUPT_TEST_NS_TRAFFIC}" != "true" ]]; then
             EXTRA_ARG="${EXTRA_ARG} --include-conn-disrupt-test-ns-traffic"
           fi
         fi
 
-        if [[ "${{ inputs.include-conn-disrupt-test-l7-traffic }}" == "true" ]]; then
+        if [[ "${INPUTS_INCLUDE_CONN_DISRUPT_TEST_L7_TRAFFIC}" == "true" ]]; then
           EXTRA_ARG="${EXTRA_ARG} --include-conn-disrupt-test-l7-traffic"
         fi
 
-        ${{ inputs.cilium-cli }} connectivity test --include-unsafe-tests \
+        ${INPUTS_CILIUM_CLI} connectivity test --include-unsafe-tests \
           --conn-disrupt-test-restarts-path "./cilium-conn-disrupt-restarts" \
           --conn-disrupt-test-xfrm-errors-path "./cilium-conn-disrupt-xfrm-errors" \
           --flush-ct \
           --sysdump-hubble-flows-count=1000000 --sysdump-hubble-flows-timeout=5m \
-          --sysdump-output-filename "cilium-sysdump-conn-disrupt-test-${{ inputs.job-name }}-<ts>" \
-          --junit-file "cilium-junits/conn-disrupt-test-${{ inputs.job-name }}.xml" \
-          ${{ inputs.extra-connectivity-test-flags }} \
-          --junit-property github_job_step="Run conn disrupt tests (${{ inputs.job-name }})" \
+          --sysdump-output-filename "cilium-sysdump-conn-disrupt-test-${INPUTS_JOB_NAME}-<ts>" \
+          --junit-file "cilium-junits/conn-disrupt-test-${INPUTS_JOB_NAME}.xml" \
+          ${INPUTS_EXTRA_CONNECTIVITY_TEST_FLAGS} \
+          --junit-property github_job_step="Run conn disrupt tests (${INPUTS_JOB_NAME})" \
           --test "$TEST_ARG" \
-          --test-concurrency=${{ inputs.test-concurrency }} \
+          --test-concurrency=${INPUTS_TEST_CONCURRENCY} \
           --expected-xfrm-errors "+inbound_no_state" \
           ${EXTRA_ARG}
+      env:
+        INPUTS_TESTS: ${{ inputs.tests }}
+        INPUTS_SKIP_INCLUDE_CONN_DISRUPT_TEST_NS_TRAFFIC: ${{ inputs.skip-include-conn-disrupt-test-ns-traffic }}
+        INPUTS_FULL_TEST: ${{ inputs.full-test }}
+        INPUTS_INCLUDE_CONN_DISRUPT_TEST_L7_TRAFFIC: ${{ inputs.include-conn-disrupt-test-l7-traffic }}
+        INPUTS_CILIUM_CLI: ${{ inputs.cilium-cli }}
+        INPUTS_JOB_NAME: ${{ inputs.job-name }}
+        INPUTS_EXTRA_CONNECTIVITY_TEST_FLAGS: ${{ inputs.extra-connectivity-test-flags }}
+        INPUTS_TEST_CONCURRENCY: ${{ inputs.test-concurrency }}
