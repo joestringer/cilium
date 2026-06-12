@@ -16,6 +16,21 @@ image="$(yq '.envoy.image.repository' ./install/kubernetes/cilium/values.yaml)"
 image_tag="$(yq '.envoy.image.tag' ./install/kubernetes/cilium/values.yaml)"
 image_sha256="$(yq '.envoy.image.digest' ./install/kubernetes/cilium/values.yaml)"
 
+if [[ ! "$image" =~ ^[a-zA-Z0-9./-]+$ ]]; then
+  echo "Invalid image repository format: '$image'" >&2
+  exit 1
+fi
+
+if [[ ! "$image_tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+[a-zA-Z0-9.+-]+$ ]]; then
+  echo "Invalid image tag format: '$image_tag'" >&2
+  exit 1
+fi
+
+if [[ ! "$image_sha256" =~ ^sha256:[a-fA-F0-9]+$ ]]; then
+  echo "Invalid image digest format: '$image_sha256'" >&2
+  exit 1
+fi
+
 # pre-check for sed, in case that this script may fail to detect change when the `sed` command fails to replace the string and return code 0
 image_regular="(ARG CILIUM_ENVOY_IMAGE=${image}:)(.*)(@sha256:[0-9a-z]*)"
 grep -E "${image_regular}" ./images/cilium/Dockerfile &>/dev/null || exit 1
